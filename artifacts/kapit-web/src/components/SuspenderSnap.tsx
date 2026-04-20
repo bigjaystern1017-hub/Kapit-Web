@@ -3,6 +3,72 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 const DRAG_THRESHOLD = 60;
 const MAX_DRAG = 220;
 
+function playSnapSound() {
+  try {
+    const ctx = new AudioContext();
+
+    const bufferSize = Math.floor(ctx.sampleRate * 0.08);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.4, ctx.currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+
+    noise.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start(ctx.currentTime);
+    noise.stop(ctx.currentTime + 0.08);
+
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(150, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.05);
+
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0.35, ctx.currentTime);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+
+    osc.connect(oscGain);
+    oscGain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.05);
+
+    setTimeout(() => ctx.close(), 300);
+  } catch {}
+}
+
+function playThresholdTick() {
+  try {
+    const ctx = new AudioContext();
+
+    const bufferSize = Math.floor(ctx.sampleRate * 0.03);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+
+    noise.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(ctx.currentTime);
+    noise.stop(ctx.currentTime + 0.03);
+
+    setTimeout(() => ctx.close(), 200);
+  } catch {}
+}
+
 function getPhysicalDrag(raw: number): number {
   if (raw < 0) return 0;
   if (raw < DRAG_THRESHOLD) return raw;
@@ -35,6 +101,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
 
   const startYRef = useRef(0);
   const activeRef = useRef(false);
+  const thresholdCrossedRef = useRef(false);
   const disabledRef = useRef(disabled);
   const onSnapRef = useRef(onSnap);
   const onDragStartRef = useRef(onDragStart);
@@ -46,6 +113,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
 
   const fireSnap = useCallback(() => {
+    playSnapSound();
     setShowFlash(true);
     setShowGlow(true);
     setBuckleScale(1.5);
@@ -72,6 +140,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     e.currentTarget.setPointerCapture(e.pointerId);
     startYRef.current = e.clientY;
     activeRef.current = true;
+    thresholdCrossedRef.current = false;
     setIsDragging(true);
     setFeedback({ text: "", pastThreshold: false });
     onDragStartRef.current?.();
@@ -84,6 +153,10 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     setBuckleY(physical);
     setSvgY(physical);
     setFeedback(getFeedback(physical));
+    if (physical >= DRAG_THRESHOLD && !thresholdCrossedRef.current) {
+      thresholdCrossedRef.current = true;
+      playThresholdTick();
+    }
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {

@@ -1,0 +1,22 @@
+Update the suspender sound design. There should be TWO sounds working together:
+SOUND 1 — THE STRETCH (plays continuously while dragging):
+When the user starts dragging the suspender, start a continuous sound that simulates a rubber band stretching. Do this with the Web Audio API:
+
+Create an oscillator at a low frequency (around 80hz)
+As the user drags further down, increase the pitch proportionally — at max drag the frequency should be around 300hz
+Also increase the volume slightly as they drag further (gain from 0.05 to 0.15)
+Add a slight tremolo/wobble effect — use a second oscillator as an LFO (low frequency oscillator) at about 6hz modulating the gain, to give it that taut vibrating rubber band quality
+The sound should update in real-time as the user drags — pitch and volume tied directly to drag distance
+When they release, the stretch sound stops immediately
+
+SOUND 2 — THE SNAP (plays on release past threshold):
+When the suspender snaps back, play a sharp whip-crack sound:
+
+Start with a very short burst of white noise (0.04 seconds) at high volume (gain 0.5) — this is the initial crack
+Immediately follow with a quick descending tone — oscillator starting at 400hz dropping to 80hz over 0.1 seconds — this is the 'whip' quality of the snap traveling down
+Add a second white noise burst right after (0.03 seconds, gain 0.2) slightly delayed by 0.05 seconds — this is the secondary crack of the band hitting back into place
+The whole snap sound should be over in about 0.15 seconds total — it needs to be FAST and violent
+
+The combination should feel like: quiet tense stretch building higher and higher... then CRACK. Like pulling back a rubber band on your friend's arm in middle school.
+If the user releases WITHOUT reaching the threshold, don't play the snap — just stop the stretch sound and play a very quiet low 'thud' (short 60hz oscillator, 0.04 seconds, gain 0.08) to indicate it fell short.
+Use a single AudioContext instance stored in a ref — don't create a new one every time. Connect all nodes properly and clean up oscillators when they're done
