@@ -36,6 +36,8 @@ function getFeedback(drag: number): { text: string; pastThreshold: boolean } {
 
 interface Props {
   onSnap: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   disabled?: boolean;
 }
 
@@ -79,7 +81,7 @@ function BrassClip({ colors }: { colors: ReturnType<typeof useColors> }) {
   );
 }
 
-export default function SuspenderSnap({ onSnap, disabled = false }: Props) {
+export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled = false }: Props) {
   const colors = useColors();
   const disabledRef = useRef(disabled);
   useEffect(() => {
@@ -150,15 +152,25 @@ export default function SuspenderSnap({ onSnap, disabled = false }: Props) {
     [dragY, buckleScale, buckleGlow, flashAnim, onSnap]
   );
 
+  const onDragStartRef = useRef(onDragStart);
+  const onDragEndRef = useRef(onDragEnd);
+  useEffect(() => { onDragStartRef.current = onDragStart; }, [onDragStart]);
+  useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabledRef.current,
-      onMoveShouldSetPanResponder: () => !disabledRef.current,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
+        if (disabledRef.current) return;
         setIsDragging(true);
         setFeedback({ text: "", pastThreshold: false });
+        onDragStartRef.current?.();
       },
       onPanResponderMove: (_, gs) => {
+        if (disabledRef.current) return;
         const physical = getPhysicalDrag(Math.max(0, gs.dy));
         dragY.setValue(physical);
         setFeedback(getFeedback(physical));
@@ -167,11 +179,14 @@ export default function SuspenderSnap({ onSnap, disabled = false }: Props) {
         }
       },
       onPanResponderRelease: (_, gs) => {
+        onDragEndRef.current?.();
+        if (disabledRef.current) { snapBack(false); return; }
         const physical = getPhysicalDrag(Math.max(0, gs.dy));
         const triggered = physical >= DRAG_THRESHOLD;
         snapBack(triggered);
       },
       onPanResponderTerminate: () => {
+        onDragEndRef.current?.();
         snapBack(false);
       },
     })
@@ -252,6 +267,7 @@ export default function SuspenderSnap({ onSnap, disabled = false }: Props) {
         </Svg>
       )}
 
+      <View onStartShouldSetResponderCapture={() => true}>
       <Animated.View
         style={[
           s.buckleWrapper,
@@ -281,6 +297,7 @@ export default function SuspenderSnap({ onSnap, disabled = false }: Props) {
           <Text style={s.buckleSymbol}>◆</Text>
         </Animated.View>
       </Animated.View>
+      </View>
 
       {(isDragging || snapping) && feedback.text.length > 0 && (
         <Text

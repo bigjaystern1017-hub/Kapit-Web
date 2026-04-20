@@ -41,6 +41,7 @@ export default function HomeScreen() {
 
   const [phase, setPhase] = useState<"idle" | "loading" | "spinning" | "revealed">("idle");
   const [locationSelected, setLocationSelected] = useState(false);
+  const [snapActive, setSnapActive] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const handleLocationSelected = () => {
@@ -96,6 +97,7 @@ export default function HomeScreen() {
           { paddingTop: topPad + 16, paddingBottom: bottomPad + 40 },
         ]}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!snapActive}
       >
         {/* Masthead */}
         <View style={s.mastheadArea}>
@@ -152,6 +154,8 @@ export default function HomeScreen() {
             {phase !== "loading" && !error && (
               <SuspenderSnap
                 onSnap={handleSnap}
+                onDragStart={() => setSnapActive(true)}
+                onDragEnd={() => setSnapActive(false)}
                 disabled={isLoading || !selectedLocation}
               />
             )}
