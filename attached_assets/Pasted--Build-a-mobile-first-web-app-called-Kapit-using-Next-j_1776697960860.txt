@@ -1,0 +1,98 @@
+"Build a mobile-first web app called Kapit using Next.js and Tailwind CSS. This is a location-based conversation starter app that gives you fascinating historical factoids about wherever you are standing.
+The Core Mission
+Kapit makes you the most interesting person in any room — with a wi-fi signal. It's a cocktail party weapon, a date saver, a dad superpower. The tone is confident, slightly cocky, self-aware, and playfully annoying. Think: a 1950s Esquire magazine met a 20-year-old finance bro at a rooftop bar.
+The Brand Identity
+
+Tagline: 'Yes, yes you are about to be the most interesting person in any room... with a wi-fi signal.'
+Secondary tagline: 'Be Insufferable, Everywhere™'
+Voice: Witty, punchy, slightly overdressed. The app talks like a charming guy who knows too much and won't shut up about it.
+
+Visual Style / Aesthetic Direction
+This is the most important part. The design must feel like:
+
+A 1950s Esquire magazine cover meets Mad Men meets Norman Rockwell
+Dark walnut wood-paneling warmth, NOT tech-dark/startup-sleek
+The kid in the rented tux with the powder blue cummerbund taking his date to a slightly-too-expensive steakhouse before prom
+Midcentury editorial typography — think Playfair Display or Didot for headlines, Courier New for labels/metadata
+Color palette: warm black (#1C1916), cream (#F5EDE0), bourbon/amber (#C4793A), olive gold (#B8A44C), cocktail/powder blue (#6A9CB7), blush (#D4A07A), smoke (#8A8078)
+Sharp rectangular corners (not rounded — this is a classy establishment)
+Subtle wood grain texture overlays, thin decorative rules (single and double), drop caps on factoid text like a magazine feature article
+The powder blue appears sparingly as an accent — like a cummerbund stripe across the top of cards
+Category labels should use elevated language: 'PECULIAR' not 'weird', 'EDIFICE' not 'architecture', 'DINING' not 'food'
+Subtle noise/grain texture overlay on background for warmth
+Side panel decorative borders suggesting wood paneling
+
+The Core UX — The Suspender Snap Mechanic
+This is the signature interaction and the most critical feature to get right:
+
+The Suspender Pull: The main interaction is NOT a button. It is a draggable element that looks like a pair of suspender straps (or a rubber band) attached to two brass clips/buckles at the top. The user grabs a central buckle at the bottom and PULLS it downward.
+Tension Physics: As the user drags down, the suspender straps visually stretch with increasing tension. The straps get thinner. The color shifts. Text feedback appears: 'a little further...' → 'let go, darling ↑' → 'oh, you mean business.' There should be a minimum drag threshold (~60px) before a release will trigger.
+The Snap: When the user releases, the buckle SNAPS back to its original position with a spring/elastic animation (use cubic-bezier for overshoot). The buckle briefly enlarges and glows. A 💥 emoji flashes. Haptic feedback fires if available (navigator.vibrate).
+The Spinning Wheel: After the snap, a card appears below with teaser text cycling through like a slot machine — lines like 'No one asked, but...', 'The past called...', 'Brace yourself, darling...' — each one slowing down progressively (increasing delay between cycles, starting ~70ms and multiplying by ~1.28x each tick). After 6-7 teasers, it lands on the actual factoid with a reveal animation.
+Repeat: The user can pull the suspender again for another fact from the same location. Each pull should try to show a different fact (fetch 5 per location, cycle through them).
+
+The Flow
+Screen 1: Location Selection
+
+A 'Find Me' button that uses browser geolocation (GPS)
+A grid of preset location buttons (for demo/testing) showing places like 'Times Square', 'Brooklyn Bridge', 'Wall Street', 'Central Park', etc.
+An expandable section for entering custom lat/lng coordinates
+Currently selected location displayed prominently
+
+Screen 2: The Snap Zone (same page, below location selection)
+
+The suspender snap mechanic as described above
+This is the hero interaction — give it visual breathing room
+
+Screen 3: The Factoid Card (same page, appears after snap)
+
+Category label (e.g., 'PECULIAR') and year in header
+Location name with a ◆ bullet
+The factoid text with a large decorative drop cap on the first letter
+Decorative double-rule dividers
+A 'YOUR MOVE' section at the bottom with a suggested conversation opener in italics
+
+Your Repertoire (bottom of page)
+
+Running history of collected facts, showing category icon, location, year, and truncated factoid text
+Labeled 'Your Repertoire' with a count
+
+Technical Architecture
+API Route for Factoid Generation
+
+Set up an API route at /api/kapit
+Use the Anthropic API (claude-sonnet-4-20250514 model) — NOT OpenAI
+The route should accept lat, lng, and location name
+Use this system prompt approach: Ask for 5 fascinating, unexpected, conversation-worthy historical factoids within ~5 miles of the coordinates. Instruct the AI to prioritize weird/surprising over famous/well-known, keep each to 2-3 sentences, write in a casual/punchy bar-conversation tone, never start with 'Did you know', and return valid JSON array with objects containing 'factoid', 'year', and 'category' fields.
+Categories should be one of: crime, science, culture, politics, sports, weird, food, architecture, nature
+Cache results by location coordinates so repeated pulls don't re-fetch
+
+Environment Variables Needed
+
+ANTHROPIC_API_KEY — for the Claude API
+
+Key Technical Requirements
+
+Mobile-first responsive design (should feel like a native app)
+Touch events for the drag mechanic (onTouchStart, onTouchMove, onTouchEnd) alongside mouse events
+CSS animations for the snap-back, wheel spinning, and card reveals
+Import Playfair Display from Google Fonts
+All state management in React (useState, useRef for drag tracking)
+The drag mechanic should prevent default touch behavior to avoid page scrolling while dragging
+
+Future Features (DO NOT BUILD YET, but structure code to accommodate)
+
+Kapit Black / After Dark mode: A premium tier that serves scandalous, dark, 'what really happened here at 2am' facts. Same API, different prompt personality. UI shifts darker with a black/gold theme.
+Push notifications: Daily fact based on your location ('Your morning Kapit')
+Social sharing: Generate a shareable image card of a factoid
+User accounts and fact collections
+
+What Success Looks Like
+When someone pulls the suspender for the first time, watches it snap, sees the wheel spin through teasers, and lands on a factoid that makes them say 'wait, really?!' — that's the moment. Everything in the app exists to make that moment as satisfying as possible. The pull should feel physical. The snap should feel violent. The wait should feel like anticipation. And the fact should feel like a gift."
+
+Notes for Development
+
+Start with the visual design and the snap mechanic FIRST. Get that feeling right before worrying about the API integration.
+The suspender drag is the hardest part technically — get the touch/mouse event handling solid on mobile before polishing.
+Test the API prompt separately to make sure fact quality is high before integrating.
+The app should work as a PWA (Progressive Web App) so it can be added to home screen and feel native.
