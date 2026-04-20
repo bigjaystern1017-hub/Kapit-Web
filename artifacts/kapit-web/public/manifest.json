@@ -1,0 +1,24 @@
+{
+  "name": "Kapit — A Gentleman's Historical Companion",
+  "short_name": "Kapit",
+  "description": "Historical factoids about your location, served with a suspender snap.",
+  "start_url": "/kapit-web/",
+  "display": "standalone",
+  "background_color": "#1C1916",
+  "theme_color": "#1C1916",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/kapit-web/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/kapit-web/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
