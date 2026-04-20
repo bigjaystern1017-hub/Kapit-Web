@@ -3,72 +3,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 const DRAG_THRESHOLD = 60;
 const MAX_DRAG = 220;
 
-function playSnapSound() {
-  try {
-    const ctx = new AudioContext();
-
-    const bufferSize = Math.floor(ctx.sampleRate * 0.08);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
-    }
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.4, ctx.currentTime);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-
-    noise.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noise.start(ctx.currentTime);
-    noise.stop(ctx.currentTime + 0.08);
-
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(150, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.05);
-
-    const oscGain = ctx.createGain();
-    oscGain.gain.setValueAtTime(0.35, ctx.currentTime);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-
-    osc.connect(oscGain);
-    oscGain.connect(ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.05);
-
-    setTimeout(() => ctx.close(), 300);
-  } catch {}
-}
-
-function playThresholdTick() {
-  try {
-    const ctx = new AudioContext();
-
-    const bufferSize = Math.floor(ctx.sampleRate * 0.03);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
-    }
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
-
-    noise.connect(gain);
-    gain.connect(ctx.destination);
-    noise.start(ctx.currentTime);
-    noise.stop(ctx.currentTime + 0.03);
-
-    setTimeout(() => ctx.close(), 200);
-  } catch {}
-}
-
 function getPhysicalDrag(raw: number): number {
   if (raw < 0) return 0;
   if (raw < DRAG_THRESHOLD) return raw;
@@ -101,16 +35,173 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
 
   const startYRef = useRef(0);
   const activeRef = useRef(false);
-  const thresholdCrossedRef = useRef(false);
   const disabledRef = useRef(disabled);
   const onSnapRef = useRef(onSnap);
   const onDragStartRef = useRef(onDragStart);
   const onDragEndRef = useRef(onDragEnd);
 
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const stretchOscRef = useRef<OscillatorNode | null>(null);
+  const stretchGainRef = useRef<GainNode | null>(null);
+  const stretchLFORef = useRef<OscillatorNode | null>(null);
+  const stretchLFOGainRef = useRef<GainNode | null>(null);
+
   useEffect(() => { disabledRef.current = disabled; }, [disabled]);
   useEffect(() => { onSnapRef.current = onSnap; }, [onSnap]);
   useEffect(() => { onDragStartRef.current = onDragStart; }, [onDragStart]);
   useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
+
+  useEffect(() => {
+    return () => {
+      stopStretch();
+      audioCtxRef.current?.close();
+    };
+  }, []);
+
+  function getAudioCtx(): AudioContext {
+    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+      audioCtxRef.current = new AudioContext();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }
+
+  function startStretch() {
+    try {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(80, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.05, now);
+
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.setValueAtTime(6, now);
+
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.setValueAtTime(0.018, now);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      lfo.connect(lfoGain);
+      lfoGain.connect(gain.gain);
+
+      osc.start(now);
+      lfo.start(now);
+
+      stretchOscRef.current = osc;
+      stretchGainRef.current = gain;
+      stretchLFORef.current = lfo;
+      stretchLFOGainRef.current = lfoGain;
+    } catch {}
+  }
+
+  function updateStretch(physical: number) {
+    try {
+      const ctx = audioCtxRef.current;
+      if (!ctx || !stretchOscRef.current || !stretchGainRef.current) return;
+      const t = Math.min(physical / MAX_DRAG, 1);
+      const freq = 80 + t * 220;
+      const gain = 0.05 + t * 0.10;
+      const now = ctx.currentTime;
+      stretchOscRef.current.frequency.setTargetAtTime(freq, now, 0.015);
+      stretchGainRef.current.gain.setTargetAtTime(gain, now, 0.015);
+    } catch {}
+  }
+
+  function stopStretch() {
+    try {
+      const now = audioCtxRef.current?.currentTime ?? 0;
+      if (stretchOscRef.current) {
+        stretchOscRef.current.stop(now);
+        stretchOscRef.current.disconnect();
+        stretchOscRef.current = null;
+      }
+      if (stretchLFORef.current) {
+        stretchLFORef.current.stop(now);
+        stretchLFORef.current.disconnect();
+        stretchLFORef.current = null;
+      }
+      if (stretchGainRef.current) {
+        stretchGainRef.current.disconnect();
+        stretchGainRef.current = null;
+      }
+      if (stretchLFOGainRef.current) {
+        stretchLFOGainRef.current.disconnect();
+        stretchLFOGainRef.current = null;
+      }
+    } catch {}
+  }
+
+  function playSnapSound() {
+    try {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+
+      const crack1Size = Math.floor(ctx.sampleRate * 0.04);
+      const crack1Buf = ctx.createBuffer(1, crack1Size, ctx.sampleRate);
+      const crack1Data = crack1Buf.getChannelData(0);
+      for (let i = 0; i < crack1Size; i++) crack1Data[i] = Math.random() * 2 - 1;
+      const crack1 = ctx.createBufferSource();
+      crack1.buffer = crack1Buf;
+      const crack1Gain = ctx.createGain();
+      crack1Gain.gain.setValueAtTime(0.5, now);
+      crack1Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      crack1.connect(crack1Gain);
+      crack1Gain.connect(ctx.destination);
+      crack1.start(now);
+      crack1.stop(now + 0.04);
+
+      const whip = ctx.createOscillator();
+      whip.type = "sine";
+      whip.frequency.setValueAtTime(400, now);
+      whip.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+      const whipGain = ctx.createGain();
+      whipGain.gain.setValueAtTime(0.3, now);
+      whipGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      whip.connect(whipGain);
+      whipGain.connect(ctx.destination);
+      whip.start(now);
+      whip.stop(now + 0.1);
+
+      const crack2Size = Math.floor(ctx.sampleRate * 0.03);
+      const crack2Buf = ctx.createBuffer(1, crack2Size, ctx.sampleRate);
+      const crack2Data = crack2Buf.getChannelData(0);
+      for (let i = 0; i < crack2Size; i++) crack2Data[i] = Math.random() * 2 - 1;
+      const crack2 = ctx.createBufferSource();
+      crack2.buffer = crack2Buf;
+      const crack2Gain = ctx.createGain();
+      crack2Gain.gain.setValueAtTime(0.2, now + 0.05);
+      crack2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      crack2.connect(crack2Gain);
+      crack2Gain.connect(ctx.destination);
+      crack2.start(now + 0.05);
+      crack2.stop(now + 0.08);
+    } catch {}
+  }
+
+  function playThudSound() {
+    try {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(60, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    } catch {}
+  }
 
   const fireSnap = useCallback(() => {
     playSnapSound();
@@ -127,12 +218,17 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
 
   const finishDrag = useCallback((currentY: number) => {
     const triggered = currentY >= DRAG_THRESHOLD && !disabledRef.current;
+    stopStretch();
     setBuckleY(0);
     setSvgY(0);
     setIsDragging(false);
     setFeedback({ text: "", pastThreshold: false });
     onDragEndRef.current?.();
-    if (triggered) fireSnap();
+    if (triggered) {
+      fireSnap();
+    } else if (currentY > 8) {
+      playThudSound();
+    }
   }, [fireSnap]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -140,9 +236,9 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     e.currentTarget.setPointerCapture(e.pointerId);
     startYRef.current = e.clientY;
     activeRef.current = true;
-    thresholdCrossedRef.current = false;
     setIsDragging(true);
     setFeedback({ text: "", pastThreshold: false });
+    startStretch();
     onDragStartRef.current?.();
   }, []);
 
@@ -153,10 +249,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     setBuckleY(physical);
     setSvgY(physical);
     setFeedback(getFeedback(physical));
-    if (physical >= DRAG_THRESHOLD && !thresholdCrossedRef.current) {
-      thresholdCrossedRef.current = true;
-      playThresholdTick();
-    }
+    updateStretch(physical);
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
