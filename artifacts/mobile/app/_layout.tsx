@@ -27,8 +27,11 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false, gestureEnabled: false, presentation: "card" }}>
+      <Stack.Screen
+        name="index"
+        options={{ headerShown: false, gestureEnabled: false, presentation: "card" }}
+      />
     </Stack>
   );
 }

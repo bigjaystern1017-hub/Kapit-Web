@@ -1,13 +1,15 @@
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  PanResponder,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import Svg, {
   Defs,
   LinearGradient as SvgLinearGradient,
@@ -81,116 +83,111 @@ function BrassClip({ colors }: { colors: ReturnType<typeof useColors> }) {
   );
 }
 
-export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled = false }: Props) {
+export default function SuspenderSnap({
+  onSnap,
+  onDragStart,
+  onDragEnd,
+  disabled = false,
+}: Props) {
   const colors = useColors();
+
   const disabledRef = useRef(disabled);
-  useEffect(() => {
-    disabledRef.current = disabled;
-  }, [disabled]);
+  const onSnapRef = useRef(onSnap);
+  const onDragStartRef = useRef(onDragStart);
+  const onDragEndRef = useRef(onDragEnd);
+  useEffect(() => { disabledRef.current = disabled; }, [disabled]);
+  useEffect(() => { onSnapRef.current = onSnap; }, [onSnap]);
+  useEffect(() => { onDragStartRef.current = onDragStart; }, [onDragStart]);
+  useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
 
   const [svgY, setSvgY] = useState(0);
-  const dragY = useRef(new Animated.Value(0)).current;
-  const buckleScale = useRef(new Animated.Value(1)).current;
-  const buckleGlow = useRef(new Animated.Value(0)).current;
-  const flashAnim = useRef(new Animated.Value(0)).current;
   const [isDragging, setIsDragging] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; pastThreshold: boolean }>({
     text: "",
     pastThreshold: false,
   });
-  const [snapping, setSnapping] = useState(false);
 
-  useEffect(() => {
-    const id = dragY.addListener(({ value }) => setSvgY(Math.max(0, value)));
-    return () => dragY.removeListener(id);
-  }, [dragY]);
+  const translateY = useSharedValue(0);
+  const buckleScale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0);
+  const flashOpacity = useSharedValue(0);
 
-  const snapBack = useCallback(
-    (triggeredSnap: boolean) => {
-      setSnapping(true);
-      Animated.spring(dragY, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 300,
-        friction: 7,
-      }).start(() => {
-        setSnapping(false);
-        setIsDragging(false);
-        setFeedback({ text: "", pastThreshold: false });
-        setSvgY(0);
-      });
+  const fireHapticHeavy = useCallback(() => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  }, []);
 
-      if (triggeredSnap) {
-        if (Platform.OS !== "web") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        }
-        Animated.sequence([
-          Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
-          Animated.timing(flashAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-        ]).start();
-        Animated.sequence([
-          Animated.spring(buckleScale, {
-            toValue: 1.5,
-            useNativeDriver: true,
-            tension: 400,
-            friction: 5,
-          }),
-          Animated.spring(buckleScale, {
-            toValue: 1,
-            useNativeDriver: true,
-            tension: 300,
-            friction: 8,
-          }),
-        ]).start();
-        Animated.sequence([
-          Animated.timing(buckleGlow, { toValue: 1, duration: 100, useNativeDriver: true }),
-          Animated.timing(buckleGlow, { toValue: 0, duration: 500, useNativeDriver: true }),
-        ]).start();
-        onSnap();
-      }
-    },
-    [dragY, buckleScale, buckleGlow, flashAnim, onSnap]
-  );
+  const fireHapticSelection = useCallback(() => {
+    if (Platform.OS !== "web") Haptics.selectionAsync();
+  }, []);
 
-  const onDragStartRef = useRef(onDragStart);
-  const onDragEndRef = useRef(onDragEnd);
-  useEffect(() => { onDragStartRef.current = onDragStart; }, [onDragStart]);
-  useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
+  const fireSnapAnimations = useCallback(() => {
+    flashOpacity.value = withSequence(
+      withTiming(1, { duration: 80 }),
+      withTiming(0, { duration: 250 })
+    );
+    buckleScale.value = withSequence(
+      withSpring(1.5, { damping: 6, stiffness: 400 }),
+      withSpring(1, { damping: 8, stiffness: 300 })
+    );
+    glowOpacity.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withTiming(0, { duration: 500 })
+    );
+    onSnapRef.current?.();
+  }, []);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onShouldBlockNativeResponder: () => true,
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => {
-        if (disabledRef.current) return;
-        setIsDragging(true);
-        setFeedback({ text: "", pastThreshold: false });
-        onDragStartRef.current?.();
-      },
-      onPanResponderMove: (_, gs) => {
-        if (disabledRef.current) return;
-        const physical = getPhysicalDrag(Math.max(0, gs.dy));
-        dragY.setValue(physical);
-        setFeedback(getFeedback(physical));
-        if (physical > DRAG_THRESHOLD && Platform.OS !== "web") {
-          Haptics.selectionAsync();
-        }
-      },
-      onPanResponderRelease: (_, gs) => {
-        onDragEndRef.current?.();
-        if (disabledRef.current) { snapBack(false); return; }
-        const physical = getPhysicalDrag(Math.max(0, gs.dy));
-        const triggered = physical >= DRAG_THRESHOLD;
-        snapBack(triggered);
-      },
-      onPanResponderTerminate: () => {
-        onDragEndRef.current?.();
-        snapBack(false);
-      },
+  const finishGesture = useCallback((triggered: boolean) => {
+    setIsDragging(false);
+    setFeedback({ text: "", pastThreshold: false });
+    setSvgY(0);
+    onDragEndRef.current?.();
+    if (triggered) {
+      fireHapticHeavy();
+      fireSnapAnimations();
+    }
+  }, [fireHapticHeavy, fireSnapAnimations]);
+
+  const pan = Gesture.Pan()
+    .onBegin(() => {
+      if (disabledRef.current) return;
+      runOnJS(setIsDragging)(true);
+      runOnJS(setFeedback)({ text: "", pastThreshold: false });
+      if (onDragStartRef.current) runOnJS(onDragStartRef.current)();
     })
-  ).current;
+    .onChange((e) => {
+      if (disabledRef.current) return;
+      const physical = getPhysicalDrag(Math.max(0, e.translationY));
+      translateY.value = physical;
+      runOnJS(setSvgY)(physical);
+      runOnJS(setFeedback)(getFeedback(physical));
+      if (physical > DRAG_THRESHOLD) {
+        runOnJS(fireHapticSelection)();
+      }
+    })
+    .onEnd((e) => {
+      const physical = getPhysicalDrag(Math.max(0, e.translationY));
+      const triggered = physical >= DRAG_THRESHOLD && !disabledRef.current;
+      translateY.value = withSpring(0, { damping: 15, stiffness: 300 });
+      runOnJS(finishGesture)(triggered);
+    })
+    .onFinalize(() => {
+      translateY.value = withSpring(0, { damping: 15, stiffness: 300 });
+      runOnJS(setSvgY)(0);
+      runOnJS(setIsDragging)(false);
+      if (onDragEndRef.current) runOnJS(onDragEndRef.current)();
+    });
+
+  const buckleAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }, { scale: buckleScale.value }],
+  }));
+
+  const glowRingStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
+  }));
+
+  const flashStyle = useAnimatedStyle(() => ({
+    opacity: flashOpacity.value,
+  }));
 
   const strapHeight = Math.max(8, svgY);
   const stretchPercent = Math.min(svgY / MAX_DRAG, 1);
@@ -200,19 +197,11 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   const leftPath = `M 45 0 Q ${45 - bowAmount} ${strapHeight * 0.5} 75 ${strapHeight}`;
   const rightPath = `M 105 0 Q ${105 + bowAmount} ${strapHeight * 0.5} 75 ${strapHeight}`;
 
-  const buckleGlowColor = buckleGlow.interpolate({
-    inputRange: [0, 1],
-    outputRange: [colors.brass, "#FFD700"],
-  });
-
   const s = styles(colors);
 
   return (
     <View style={s.container}>
-      <Animated.View
-        style={[s.flashOverlay, { opacity: flashAnim }]}
-        pointerEvents="none"
-      />
+      <Animated.View style={[s.flashOverlay, flashStyle]} pointerEvents="none" />
 
       <View style={s.clipsRow}>
         <BrassClip colors={colors} />
@@ -267,39 +256,20 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
         </Svg>
       )}
 
-      <View onStartShouldSetResponderCapture={() => true}>
-      <Animated.View
-        style={[
-          s.buckleWrapper,
-          {
-            transform: [{ translateY: dragY }, { scale: buckleScale }],
-          },
-        ]}
-        {...panResponder.panHandlers}
-      >
-        <Animated.View
-          style={[s.glowRing, { borderColor: buckleGlowColor }]}
-          pointerEvents="none"
-        />
-        <Animated.View
-          style={[
-            s.buckle,
-            {
-              borderColor: buckleGlowColor,
-              backgroundColor: buckleGlow.interpolate({
-                inputRange: [0, 1],
-                outputRange: [colors.secondary, "#2A1800"],
-              }),
-            },
-          ]}
-        >
-          <View style={s.innerRing} />
-          <Text style={s.buckleSymbol}>◆</Text>
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[s.buckleWrapper, buckleAnimStyle]}>
+          <Animated.View
+            style={[s.glowRing, glowRingStyle]}
+            pointerEvents="none"
+          />
+          <View style={s.buckle}>
+            <View style={s.innerRing} />
+            <Text style={s.buckleSymbol}>◆</Text>
+          </View>
         </Animated.View>
-      </Animated.View>
-      </View>
+      </GestureDetector>
 
-      {(isDragging || snapping) && feedback.text.length > 0 && (
+      {isDragging && feedback.text.length > 0 && (
         <Text
           style={[
             s.feedbackText,
@@ -310,7 +280,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
         </Text>
       )}
 
-      {!isDragging && !snapping && (
+      {!isDragging && (
         <View style={s.hintRow}>
           <View style={s.hintRule} />
           <Text style={s.hintText}>PULL THE SUSPENDER</Text>
@@ -348,8 +318,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
       zIndex: 10,
-      cursor: "grab" as any,
       marginTop: 4,
+      cursor: "grab" as any,
     },
     glowRing: {
       position: "absolute",
@@ -357,6 +327,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       height: 72,
       borderRadius: 36,
       borderWidth: 3,
+      borderColor: "#FFD700",
       zIndex: -1,
     },
     buckle: {
