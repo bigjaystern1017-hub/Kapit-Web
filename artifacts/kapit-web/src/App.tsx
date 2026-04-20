@@ -18,7 +18,7 @@ function HomeScreen() {
     repertoire,
   } = useKapit();
 
-  const [phase, setPhase] = useState<"idle" | "loading" | "spinning" | "revealed">("idle");
+  const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
   const [locationSelected, setLocationSelected] = useState(false);
   const [snapActive, setSnapActive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -28,24 +28,17 @@ function HomeScreen() {
     setPhase("idle");
   };
 
-  const handleSnap = useCallback(async () => {
+  const handleSnap = useCallback(() => {
     if (!selectedLocation) return;
-    if (phase === "loading") return;
+    if (phase === "spinning") return;
 
     if (factoids.length === 0) {
-      setPhase("loading");
-      await fetchFactoids();
       setPhase("spinning");
+      fetchFactoids();
     } else {
       advanceFactoidIndex();
       setPhase("spinning");
     }
-
-    setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTo({ top: 420, behavior: "smooth" });
-      }
-    }, 200);
   }, [selectedLocation, phase, factoids.length, fetchFactoids, advanceFactoidIndex]);
 
   const handleRevealComplete = useCallback(() => {
@@ -115,19 +108,6 @@ function HomeScreen() {
               <div style={{ flex: 1, height: 1, backgroundColor: "var(--border)" }} />
             </div>
 
-            {isLoading && phase === "loading" && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 40, paddingBottom: 40, gap: 16 }}>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <div className="dot-1" style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
-                  <div className="dot-2" style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
-                  <div className="dot-3" style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
-                </div>
-                <span className="font-serif" style={{ fontSize: 14, color: "var(--smoke)", fontStyle: "italic" }}>
-                  digging through the archives&hellip;
-                </span>
-              </div>
-            )}
-
             {error && (
               <div style={{ border: "1px solid var(--destructive)", padding: 16, marginBottom: 16 }}>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--destructive)", textAlign: "center", marginBottom: 10 }}>{error}</div>
@@ -140,7 +120,7 @@ function HomeScreen() {
               </div>
             )}
 
-            {phase !== "loading" && !error && (
+            {!error && (
               <SuspenderSnap
                 onSnap={handleSnap}
                 onDragStart={() => setSnapActive(true)}

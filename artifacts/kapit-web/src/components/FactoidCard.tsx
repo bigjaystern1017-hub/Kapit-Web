@@ -48,34 +48,63 @@ interface Props {
 export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: Props) {
   const [displayText, setDisplayText] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [key, setKey] = useState(0);
-  const tickRef = useRef(0);
+  const [revealKey, setRevealKey] = useState(0);
+
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const waitingForDataRef = useRef(false);
+  const teasersDoneRef = useRef(false);
+  const keepRevealedRef = useRef(false);
+  const factoidRef = useRef<Factoid | null>(factoid);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  factoidRef.current = factoid;
+
+  const doReveal = (f: Factoid) => {
+    waitingForDataRef.current = false;
+    keepRevealedRef.current = true;
+    setDisplayText(f.factoid);
+    setRevealed(true);
+    setRevealKey((k) => k + 1);
+    setTimeout(() => {
+      if (cardRef.current) {
+        cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      onRevealComplete();
+    }, 600);
+  };
 
   useEffect(() => {
     if (!isSpinning) {
-      setRevealed(false);
-      setDisplayText("");
+      if (!keepRevealedRef.current) {
+        setRevealed(false);
+        setDisplayText("");
+        teasersDoneRef.current = false;
+        waitingForDataRef.current = false;
+      }
       if (intervalRef.current) clearTimeout(intervalRef.current);
       return;
     }
 
+    keepRevealedRef.current = false;
     setRevealed(false);
-    tickRef.current = 0;
+    teasersDoneRef.current = false;
+    waitingForDataRef.current = false;
+    let tick = 0;
 
     const spin = () => {
-      const tick = tickRef.current;
       if (tick < TEASERS.length) {
-        setDisplayText(TEASERS[tick % TEASERS.length]);
-        tickRef.current++;
+        setDisplayText(TEASERS[tick]);
+        tick++;
         const delay = 70 * Math.pow(1.28, tick);
         intervalRef.current = setTimeout(spin, delay);
       } else {
-        if (factoid) {
-          setDisplayText(factoid.factoid);
-          setRevealed(true);
-          setKey((k) => k + 1);
-          setTimeout(() => onRevealComplete(), 600);
+        teasersDoneRef.current = true;
+        const available = factoidRef.current;
+        if (available) {
+          doReveal(available);
+        } else {
+          waitingForDataRef.current = true;
+          setDisplayText("almost there\u2026");
         }
       }
     };
@@ -85,7 +114,13 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: P
     return () => {
       if (intervalRef.current) clearTimeout(intervalRef.current);
     };
-  }, [isSpinning, factoid]);
+  }, [isSpinning]);
+
+  useEffect(() => {
+    if (factoid && waitingForDataRef.current) {
+      doReveal(factoid);
+    }
+  }, [factoid]);
 
   if (!isSpinning && !revealed) return null;
 
@@ -111,20 +146,19 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: P
       )}
 
       {revealed && factoid && (
-        <div key={key} className="factoid-card-enter" style={{
+        <div ref={cardRef} key={revealKey} className="factoid-card-enter" style={{
           backgroundColor: "var(--card-elevated)",
           border: "1px solid var(--border)",
-          overflow: "hidden",
           boxShadow: "0 6px 16px rgba(0,0,0,0.4)",
         }}>
-          <div style={{ height: 3, backgroundColor: "var(--powder-blue)" }} />
+          <div style={{ height: 3, backgroundColor: "var(--powder-blue)", flexShrink: 0 }} />
 
           <div style={{ padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <span className="font-mono" style={{ fontSize: 10, letterSpacing: 3, color: "var(--powder-blue)" }}>
                 {getCategoryLabel(factoid.category)}
               </span>
-              <div style={{ width: 4, height: 4, backgroundColor: "var(--smoke)" }} />
+              <div style={{ width: 4, height: 4, backgroundColor: "var(--smoke)", flexShrink: 0 }} />
               <span className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)" }}>
                 {factoid.year}
               </span>
@@ -138,9 +172,10 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: P
 
             <div style={{ height: 1, backgroundColor: "var(--border)", marginTop: 12, marginBottom: 12 }} />
 
-            <div style={{ display: "flex", flexWrap: "wrap", marginBottom: 4 }}>
+            <div style={{ marginBottom: 4 }}>
               <span className="font-serif" style={{
-                fontSize: 52, lineHeight: "50px",
+                fontSize: 52,
+                lineHeight: "50px",
                 color: "var(--bourbon)",
                 marginRight: 6,
                 marginTop: -2,
@@ -148,12 +183,18 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: P
               }}>
                 {factoid.factoid.charAt(0)}
               </span>
-              <span className="font-serif" style={{ fontSize: 18, lineHeight: "30px", color: "var(--cream)" }}>
+              <span className="font-serif" style={{
+                fontSize: 18,
+                lineHeight: "30px",
+                color: "var(--cream)",
+                display: "block",
+              }}>
                 {factoid.factoid.slice(1)}
               </span>
+              <div style={{ clear: "both" }} />
             </div>
 
-            <div style={{ marginTop: 16, marginBottom: 0 }}>
+            <div style={{ marginTop: 16 }}>
               <div style={{ height: 2, backgroundColor: "var(--border)" }} />
               <div style={{ height: 3 }} />
               <div style={{ height: 1, backgroundColor: "var(--border-subtle)" }} />
