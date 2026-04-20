@@ -1,0 +1,32 @@
+Here's your prompt — this would be Prompt #4b since it replaces the synthesized audio from #4:
+
+Prompt #4b — Replace Sound Effects With Audio Files
+"Replace all the synthesized Web Audio API sounds with real audio files. I have two MP3 files:
+
+stretch-rubber.mp3 — a rubber band stretching sound
+whip-crack.mp3 — a whip crack/snap sound
+
+Place these files in the /public/sounds/ directory.
+Here's how they should work:
+STRETCH SOUND (stretch-rubber.mp3):
+
+Preload this audio file when the component mounts
+When the user starts dragging the suspender, start playing the stretch sound
+As the user drags further down, increase the playback rate proportionally — at rest it should play at rate 0.5 (slower/lower pitch), at max drag it should play at rate 1.5 (faster/higher pitch). This simulates increasing tension.
+Also increase the volume slightly as they drag further — volume from 0.3 at start to 0.7 at max drag
+If the audio reaches the end while the user is still dragging, loop it back to the beginning
+When the user releases, stop the stretch sound immediately
+
+WHIP CRACK SOUND (whip-crack.mp3):
+
+Preload this audio file when the component mounts
+When the user releases the suspender past the drag threshold and the snap-back animation triggers, play the whip crack sound immediately
+Play it at full volume (1.0) and normal playback rate (1.0)
+If the user snaps again before the sound finishes, reset it to the beginning and play again
+
+NO SOUND ON DUD:
+
+If the user releases without reaching the threshold, don't play any sound — just let the suspender fall back silently
+
+Use HTML Audio elements (new Audio()) for both sounds. Store them in React refs so they persist across renders. Preload them by setting preload='auto' and calling .load() on mount. Handle any autoplay restrictions by resuming audio context on the first user touch event.
+Remove all the existing Web Audio API synthesized sound code — oscillators, white noise buffers, all of it. Replace entirely with these two audio files
