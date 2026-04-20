@@ -1,6 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -18,6 +17,12 @@ import SpinningWheel from "@/components/SpinningWheel";
 import SuspenderSnap from "@/components/SuspenderSnap";
 import { useKapit } from "@/context/KapitContext";
 import { useColors } from "@/hooks/useColors";
+
+const serifFont = Platform.select({
+  ios: "Georgia",
+  android: "serif",
+  default: "'Playfair Display', Georgia, serif",
+});
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -79,27 +84,38 @@ export default function HomeScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: colors.warmBlack }]}>
+      {/* Wood-panel edge strips */}
+      <View style={s.edgeLeft} />
+      <View style={s.edgeRight} />
+
       <ScrollView
         ref={scrollRef}
         style={s.scroll}
         contentContainerStyle={[
           s.content,
-          { paddingTop: topPad + 20, paddingBottom: bottomPad + 40 },
+          { paddingTop: topPad + 16, paddingBottom: bottomPad + 40 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={s.masthead}>
-          <View style={s.mastheadRule} />
+        {/* Masthead */}
+        <View style={s.mastheadArea}>
+          <Text style={s.mastheadOverline}>A Gentleman&apos;s Companion</Text>
+
           <Text style={s.mastheadTitle}>KAPIT</Text>
-          <View style={s.mastheadRule} />
+
+          <Text style={s.tagline}>
+            Yes, yes you are about to be the most interesting person in any room
+          </Text>
+          <Text style={s.taglineAccent}>with a wi-fi signal.</Text>
+
+          <View style={s.decorativeDoubleRule}>
+            <View style={s.doubleRuleThick} />
+            <View style={{ height: 3 }} />
+            <View style={s.doubleRuleThin} />
+          </View>
+
+          <View style={s.cummerbundAccent} />
         </View>
-
-        <Text style={s.tagline}>
-          Yes, yes you are about to be the most interesting person in any room...
-        </Text>
-        <Text style={s.taglineAccent}>with a wi-fi signal.</Text>
-
-        <View style={s.powderBlueStripe} />
 
         <View style={s.section}>
           <LocationSelector onLocationSelected={handleLocationSelected} />
@@ -109,14 +125,14 @@ export default function HomeScreen() {
           <View style={s.snapZone}>
             <View style={s.snapZoneHeader}>
               <View style={s.rule} />
-              <Text style={s.snapZoneLabel}>SNAP ZONE</Text>
+              <Text style={s.snapZoneLabel}>THE SNAP</Text>
               <View style={s.rule} />
             </View>
 
             {isLoading && phase === "loading" && (
               <View style={s.loadingBox}>
                 <ActivityIndicator color={colors.bourbon} size="large" />
-                <Text style={s.loadingText}>consulting the archives...</Text>
+                <Text style={s.loadingText}>digging through the archives\u2026</Text>
               </View>
             )}
 
@@ -141,16 +157,19 @@ export default function HomeScreen() {
             )}
 
             {phase === "revealed" && (
-              <TouchableOpacity
-                style={s.pullAgainButton}
-                onPress={() => {
-                  advanceFactoidIndex();
-                  setPhase("spinning");
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={s.pullAgainText}>PULL AGAIN</Text>
-              </TouchableOpacity>
+              <View style={s.pullAgainRow}>
+                <View style={s.pullAgainRule} />
+                <TouchableOpacity
+                  onPress={() => {
+                    advanceFactoidIndex();
+                    setPhase("spinning");
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.pullAgainText}>PULL AGAIN FOR ANOTHER</Text>
+                </TouchableOpacity>
+                <View style={s.pullAgainRule} />
+              </View>
             )}
           </View>
         )}
@@ -166,7 +185,8 @@ export default function HomeScreen() {
         <Repertoire repertoire={repertoire} />
 
         <View style={s.footer}>
-          <Text style={s.footerText}>Be Insufferable, Everywhere™</Text>
+          <Text style={s.footerBrand}>KAPIT</Text>
+          <Text style={s.footerTagline}>Be Insufferable, Everywhere\u2122</Text>
         </View>
       </ScrollView>
     </View>
@@ -177,55 +197,98 @@ const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     root: {
       flex: 1,
+      position: "relative",
+    },
+    edgeLeft: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      bottom: 0,
+      width: 5,
+      backgroundColor: "#2A1F14",
+      borderRightWidth: 1,
+      borderRightColor: "rgba(196,121,58,0.06)",
+      zIndex: 10,
+    },
+    edgeRight: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      width: 5,
+      backgroundColor: "#2A1F14",
+      borderLeftWidth: 1,
+      borderLeftColor: "rgba(196,121,58,0.06)",
+      zIndex: 10,
     },
     scroll: {
       flex: 1,
     },
     content: {
       flexGrow: 1,
+      paddingHorizontal: 8,
     },
-    masthead: {
-      flexDirection: "row",
+    mastheadArea: {
       alignItems: "center",
       paddingHorizontal: 20,
-      marginBottom: 12,
-      gap: 16,
+      marginBottom: 20,
+      paddingTop: 8,
     },
-    mastheadRule: {
-      flex: 1,
-      height: 2,
-      backgroundColor: colors.bourbon,
+    mastheadOverline: {
+      fontFamily: "Courier",
+      fontSize: 9,
+      letterSpacing: 6,
+      color: colors.smokeMuted,
+      textTransform: "uppercase",
+      marginBottom: 6,
     },
     mastheadTitle: {
-      fontFamily: "Courier",
-      fontSize: 36,
-      fontWeight: "bold" as const,
+      fontFamily: serifFont,
+      fontSize: 64,
       letterSpacing: 12,
       color: colors.cream,
+      textShadowColor: "#000000",
+      textShadowOffset: { width: 1, height: 2 },
+      textShadowRadius: 8,
+      marginBottom: 8,
     },
     tagline: {
-      fontFamily: "Courier",
-      fontSize: 12,
+      fontFamily: serifFont,
+      fontSize: 13,
       color: colors.smoke,
       textAlign: "center",
-      paddingHorizontal: 28,
-      lineHeight: 18,
+      paddingHorizontal: 20,
+      lineHeight: 20,
       fontStyle: "italic",
     },
     taglineAccent: {
-      fontFamily: "Courier",
-      fontSize: 12,
-      color: colors.bourbon,
+      fontFamily: serifFont,
+      fontSize: 13,
+      color: colors.powderBlue,
       textAlign: "center",
       marginTop: 2,
-      marginBottom: 20,
+      marginBottom: 14,
       fontStyle: "italic",
     },
-    powderBlueStripe: {
+    decorativeDoubleRule: {
+      width: 140,
+      marginBottom: 10,
+    },
+    doubleRuleThick: {
+      height: 2,
+      backgroundColor: colors.bourbon,
+    },
+    doubleRuleThin: {
+      height: 1,
+      backgroundColor: colors.bourbon,
+      opacity: 0.3,
+    },
+    cummerbundAccent: {
+      width: 60,
       height: 3,
       backgroundColor: colors.powderBlue,
-      marginHorizontal: 20,
-      marginBottom: 24,
+      opacity: 0.6,
+      marginBottom: 4,
     },
     section: {
       marginBottom: 8,
@@ -258,11 +321,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 16,
     },
     loadingText: {
-      fontFamily: "Courier",
-      fontSize: 12,
+      fontFamily: serifFont,
+      fontSize: 14,
       color: colors.smoke,
       fontStyle: "italic",
-      letterSpacing: 1,
     },
     errorBox: {
       borderWidth: 1,
@@ -288,32 +350,43 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       letterSpacing: 3,
       color: colors.cream,
     },
-    pullAgainButton: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingVertical: 12,
+    pullAgainRow: {
+      flexDirection: "row",
       alignItems: "center",
-      marginTop: 8,
+      gap: 10,
+      marginTop: 12,
+      paddingHorizontal: 4,
+    },
+    pullAgainRule: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
     },
     pullAgainText: {
       fontFamily: "Courier",
-      fontSize: 11,
-      letterSpacing: 4,
+      fontSize: 10,
+      letterSpacing: 3,
       color: colors.smoke,
     },
     footer: {
-      paddingVertical: 24,
+      paddingVertical: 28,
       alignItems: "center",
       borderTopWidth: 1,
       borderTopColor: colors.border,
       marginTop: 24,
       marginHorizontal: 20,
+      gap: 4,
     },
-    footerText: {
+    footerBrand: {
       fontFamily: "Courier",
-      fontSize: 10,
-      letterSpacing: 2,
+      fontSize: 11,
+      letterSpacing: 6,
       color: colors.border,
+    },
+    footerTagline: {
+      fontFamily: serifFont,
+      fontSize: 12,
+      color: colors.smokeMuted,
       fontStyle: "italic",
     },
   });

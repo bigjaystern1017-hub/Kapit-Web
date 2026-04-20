@@ -1,0 +1,107 @@
+Kapit Visual Overhaul — Paste This Into Replit Agent
+"I need you to do a visual overhaul of the existing Kapit app. The architecture, state management, API route, and component structure are all solid — DON'T change any of that. I only want you to upgrade the visual design, typography, and the suspender snap mechanic to match a very specific aesthetic.
+The Aesthetic We're Going For
+Think 1950s Esquire magazine meets Mad Men. Norman Rockwell meets a rooftop cocktail bar. The kid in the rented tux with the powder blue cummerbund at prom. It should feel like a midcentury editorial magazine — warm, textured, confident, slightly overdressed. NOT tech-sleek, NOT startup-dark, NOT generic app design.
+Install This First
+Run: npx expo install react-native-svg
+We need SVG support for the suspender straps.
+Change 1: Update the Color Palette (hooks/useColors.ts)
+Add these additional colors to the existing palette. Keep all existing colors but add:
+
+bourbonLight: '#D4945A'
+bourbonDark: '#8A5428'
+oliveGold: '#B8A44C'
+oliveGoldMuted: '#8A7A3C'
+powderBlueMuted: '#4A7A94'
+smokeMuted: '#5A5347'
+cardElevated: '#252018'
+brass: '#B8A44C'
+brassHighlight: '#D4C06A'
+brassShadow: '#6A5A2C'
+borderActive: 'rgba(196, 121, 58, 0.3)'
+borderSubtle: 'rgba(196, 121, 58, 0.06)'
+textPrimary: '#F5EDE0'
+textSecondary: '#D4C5A9'
+textTertiary: '#8A8078'
+textMuted: '#5A5347'
+textAccent: '#C4793A'
+creamMuted: '#D4C5A9'
+
+Change 2: Rebuild the Masthead (app/index.tsx)
+The current masthead is weak. Replace it with:
+
+Above the title: tiny text that says 'A Gentleman's Companion' in Courier, 9px, letterSpacing 6, uppercase, color smokeMuted
+The title 'KAPIT' should use Georgia font (NOT Courier) at 64px with letterSpacing 12. On web, use 'Playfair Display', Georgia, serif. Add a text shadow for depth.
+Below the title: the tagline in Georgia italic, 13px, color smoke. The words 'with a wi-fi signal.' should be colored powderBlue.
+Below the tagline: a decorative double rule — a 2px line in bourbon color, 3px gap, then a 1px line in bourbon at 0.3 opacity. Width about 140px, centered.
+Below that: a small 60px wide, 3px tall powder blue stripe at 0.6 opacity (this is the cummerbund accent).
+Add thin wood-panel edge strips on the far left and right edges of the screen — 5px wide, backgroundColor '#2A1F14' with a 1px border on the inner edge at 'rgba(196,121,58,0.06)'. These should be position absolute, full height.
+
+Change the section header from 'SNAP ZONE' to 'THE SNAP'.
+Change the loading text from 'consulting the archives...' to 'digging through the archives…' in Georgia italic instead of Courier.
+Change the pull again prompt to say 'PULL AGAIN FOR ANOTHER' with flanking rule lines on each side.
+The footer should show 'KAPIT' in small tracked Courier, then below it 'Be Insufferable, Everywhere™' in Georgia italic.
+Change 3: Rebuild the Suspender Snap (components/SuspenderSnap.tsx)
+This is the most important change. The current suspender looks like two brown rectangles and a square. It needs to look and feel like actual suspender hardware.
+The Buckle: Change from a square to a CIRCLE. 58px diameter, borderRadius 29. Border should be 2.5px in the brass color. Add a subtle gradient effect — the top half slightly lighter (rgba(245,237,224,0.03)), bottom half slightly darker (rgba(0,0,0,0.1)). Inside the buckle, add an inner ring — 38px circle with a thin border in rgba(196,121,58,0.25). Center a ◆ symbol inside. Add a real shadow: shadowColor '#000', shadowOffset {0,3}, shadowOpacity 0.5, shadowRadius 8.
+On snap, the buckle should scale to 1.5x (not 1.4), and add an outer glow ring — a 72px circle with a 3px border that animates from transparent to gold (#FFD700).
+The Clips: Replace the current flat clips with brass hardware. Each clip should have a small circular screw (8px, borderRadius 4, brass colored with shadow) on top, and a rectangular plate below (20px wide, 8px tall, brass colored with a lighter highlight strip on the top 3px at 0.4 opacity).
+The Straps: This is the big change. Replace the flat Animated.View rectangles with SVG paths using react-native-svg. Import Svg, Path, Circle, Defs, LinearGradient, Stop from 'react-native-svg'.
+The straps should be curved quadratic bezier paths that bow OUTWARD under tension. The left strap path: M 55 0 Q ${55 - bowAmount} ${strapHeight * 0.5} 75 ${strapHeight} where bowAmount = stretchPercent * 18. The right strap: M 95 0 Q ${95 + bowAmount} ${strapHeight * 0.5} 75 ${strapHeight}. strapHeight = 60 + currentDragY.
+Each strap should have three layers:
+
+Main strap body: stroke using a LinearGradient from bourbon to bourbonDark, strokeWidth 5 minus stretchPercent * 1.5
+Highlight line: same path, stroke bourbonLight at opacity 0.2, strokeWidth 1
+Stitch detail: same path, stroke bourbonDark at opacity 0.5, strokeWidth 0.8, strokeDasharray '3,4'
+
+The SVG viewBox width should be 150.
+Drag Physics: Add rubber band tension — after the threshold (60px), further drag should only move at 50% rate: const clamped = raw < DRAG_THRESHOLD ? raw : DRAG_THRESHOLD + (raw - DRAG_THRESHOLD) * 0.5
+Feedback Messages: Change to: '' (under 15px), 'a little further…' (under 60), 'let go, darling ↑' (under 110), 'oh, you mean business' (under 150), 'absolute menace' (over 150). Style feedback in Courier italic, but change color to bourbon when past threshold.
+Idle State: Replace 'PULL TO REVEAL' with 'PULL THE SUSPENDER' flanked by two small 20px rule lines.
+Snap Flash: Add an Animated.View overlay on the entire snap container that briefly flashes rgba(196,121,58,0.08) on snap.
+Change 4: Upgrade the Factoid Card (components/SpinningWheel.tsx)
+Typography — this is critical:
+
+The factoid body text should use Georgia font (NOT Courier). 18px, lineHeight 30. On web use 'Playfair Display', Georgia, serif.
+The drop cap should also use Georgia at 52px (not Courier bold at 48px). Color bourbon.
+The spinner teaser text during the wheel spin should use Georgia italic at 17px, not Courier.
+Keep Courier ONLY for: category labels, year labels, location text, and the 'YOUR MOVE' label. These are the small metadata elements where monospace is intentional.
+The 'YOUR MOVE' conversation opener text should use Georgia italic at 14px.
+
+Card Design:
+
+Add a 3px powderBlue stripe across the top of the card (the cummerbund accent). This goes above the padding, inside the card but before the content.
+Add a real shadow to the card: shadowColor '#000', shadowOffset {0,6}, shadowOpacity 0.4, shadowRadius 16.
+The card border should use the border color from the palette.
+
+Category Labels: Change the display names:
+
+weird → 'PECULIAR'
+sports → 'ATHLETICS'
+food → 'DINING'
+architecture → 'EDIFICE'
+Keep crime, science, culture, politics, nature as-is but uppercase
+
+Double Rule: After the factoid text, add a decorative double rule — 2px line in border color, 3px gap, 1px line in borderSubtle color. Put this before the YOUR MOVE section.
+Spinner Phase: Add three small animated dots below the teaser text during spinning — three 4px circles in bourbon at staggered opacity (0.3, 0.6, 1.0).
+Reveal Animation: Add a slight scale bounce — animate from scale 0.97 to 1.0 with a spring animation alongside the existing fade and slide.
+Change 5: Add Playfair Display Font (Web Only)
+If the app has an HTML template or head configuration, add:
+<link href='https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap' rel='stylesheet'>
+For all font references, use Platform.select:
+
+ios: 'Georgia'
+android: 'serif'
+web: "'Playfair Display', Georgia, serif"
+
+What NOT To Change
+
+Don't touch KapitContext.tsx — state management is perfect
+Don't touch the API route — prompt and caching are solid
+Don't change the LocationSelector component yet (we'll do that later)
+Don't change the Repertoire component yet (we'll do that later)
+Don't change any navigation or app structure
+Don't change any of the business logic or data flow
+
+Summary of the Vibe
+After these changes, the app should feel like opening a cocktail menu at a dimly lit 1950s steakhouse — warm, textured, confident. The typography should have a clear hierarchy: big beautiful serifs for headlines and body text, small tracked monospace for labels and metadata. The suspender should look like actual brass hardware with leather straps that stretch and snap. Everything should feel intentional and slightly overdressed, like it's trying a little too hard — and that's exactly the point."

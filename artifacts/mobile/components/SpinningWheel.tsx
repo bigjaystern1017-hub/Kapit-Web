@@ -1,19 +1,40 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 
-import { useColors } from "@/hooks/useColors";
 import type { Factoid } from "@/context/KapitContext";
-import { getCategoryLabel } from "./LocationSelector";
+import { useColors } from "@/hooks/useColors";
 
 const TEASERS = [
-  "No one asked, but...",
-  "The past called...",
-  "Brace yourself, darling...",
-  "You didn't hear this from me...",
-  "History is insufferable...",
-  "Somebody had to know...",
-  "Consider yourself warned...",
+  "No one asked, but\u2026",
+  "The past called\u2026",
+  "Brace yourself, darling\u2026",
+  "You didn't hear this from me\u2026",
+  "History is insufferable\u2026",
+  "Somebody had to know\u2026",
+  "Consider yourself warned\u2026",
 ];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  crime: "CRIME",
+  science: "SCIENCE",
+  culture: "CULTURE",
+  politics: "POLITICS",
+  sports: "ATHLETICS",
+  weird: "PECULIAR",
+  food: "DINING",
+  architecture: "EDIFICE",
+  nature: "NATURE",
+};
+
+export function getCategoryLabel(cat: string): string {
+  return CATEGORY_LABELS[cat] ?? cat.toUpperCase();
+}
+
+const serifFont = Platform.select({
+  ios: "Georgia",
+  android: "serif",
+  default: "'Playfair Display', Georgia, serif",
+});
 
 interface Props {
   factoid: Factoid | null;
@@ -26,8 +47,13 @@ export default function SpinningWheel({ factoid, isSpinning, onRevealComplete }:
   const [displayText, setDisplayText] = useState("");
   const [revealed, setRevealed] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const slideAnim = useRef(new Animated.Value(16)).current;
+  const scaleAnim = useRef(new Animated.Value(0.97)).current;
+  const dot1Anim = useRef(new Animated.Value(0.3)).current;
+  const dot2Anim = useRef(new Animated.Value(0.6)).current;
+  const dot3Anim = useRef(new Animated.Value(1.0)).current;
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dotLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const tickRef = useRef(0);
 
   useEffect(() => {
@@ -35,12 +61,29 @@ export default function SpinningWheel({ factoid, isSpinning, onRevealComplete }:
       setRevealed(false);
       setDisplayText("");
       fadeAnim.setValue(0);
-      slideAnim.setValue(20);
+      slideAnim.setValue(16);
+      scaleAnim.setValue(0.97);
+      dot1Anim.setValue(0.3);
+      dot2Anim.setValue(0.6);
+      dot3Anim.setValue(1.0);
+      if (dotLoopRef.current) dotLoopRef.current.stop();
       return;
     }
 
     setRevealed(false);
     tickRef.current = 0;
+
+    dotLoopRef.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(dot1Anim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot2Anim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot3Anim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot1Anim, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot2Anim, { toValue: 0.6, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot3Anim, { toValue: 1.0, duration: 300, useNativeDriver: true }),
+      ])
+    );
+    dotLoopRef.current.start();
 
     const spin = () => {
       const tick = tickRef.current;
@@ -50,23 +93,20 @@ export default function SpinningWheel({ factoid, isSpinning, onRevealComplete }:
         const delay = 70 * Math.pow(1.28, tick);
         intervalRef.current = setTimeout(spin, delay);
       } else {
+        if (dotLoopRef.current) dotLoopRef.current.stop();
         if (factoid) {
           setDisplayText(factoid.factoid);
           setRevealed(true);
           Animated.parallel([
-            Animated.timing(fadeAnim, {
+            Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+            Animated.spring(scaleAnim, {
               toValue: 1,
-              duration: 600,
               useNativeDriver: true,
+              tension: 200,
+              friction: 10,
             }),
-            Animated.timing(slideAnim, {
-              toValue: 0,
-              duration: 600,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            onRevealComplete();
-          });
+          ]).start(() => onRevealComplete());
         }
       }
     };
@@ -75,6 +115,7 @@ export default function SpinningWheel({ factoid, isSpinning, onRevealComplete }:
 
     return () => {
       if (intervalRef.current) clearTimeout(intervalRef.current);
+      if (dotLoopRef.current) dotLoopRef.current.stop();
     };
   }, [isSpinning, factoid]);
 
@@ -85,13 +126,19 @@ export default function SpinningWheel({ factoid, isSpinning, onRevealComplete }:
   return (
     <View style={s.container}>
       <View style={s.doubleRuleTop}>
-        <View style={s.rule} />
-        <View style={[s.rule, { marginTop: 2 }]} />
+        <View style={s.ruleThick} />
+        <View style={{ height: 3 }} />
+        <View style={[s.ruleThin, { opacity: 0.4 }]} />
       </View>
 
       {!revealed && (
         <View style={s.spinnerBox}>
           <Text style={s.spinnerText}>{displayText}</Text>
+          <View style={s.dotsRow}>
+            <Animated.View style={[s.dot, { opacity: dot1Anim }]} />
+            <Animated.View style={[s.dot, { opacity: dot2Anim }]} />
+            <Animated.View style={[s.dot, { opacity: dot3Anim }]} />
+          </View>
         </View>
       )}
 
@@ -101,44 +148,48 @@ export default function SpinningWheel({ factoid, isSpinning, onRevealComplete }:
             s.factoidCard,
             {
               opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
+              transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
             },
           ]}
         >
-          <View style={s.cardHeader}>
-            <Text style={s.categoryLabel}>{getCategoryLabel(factoid.category)}</Text>
-            <View style={s.dot} />
-            <Text style={s.yearLabel}>{factoid.year}</Text>
-          </View>
+          <View style={s.cummerbundStripe} />
 
-          <View style={s.locationRow}>
-            <Text style={s.locationText}>◆ {factoid.location}</Text>
-          </View>
+          <View style={s.cardInner}>
+            <View style={s.cardHeader}>
+              <Text style={s.categoryLabel}>{getCategoryLabel(factoid.category)}</Text>
+              <View style={s.headerDot} />
+              <Text style={s.yearLabel}>{factoid.year}</Text>
+            </View>
 
-          <View style={s.rule} />
+            <View style={s.locationRow}>
+              <Text style={s.locationText}>◆ {factoid.location}</Text>
+            </View>
 
-          <View style={s.factoidBody}>
-            <Text style={s.dropCap}>{factoid.factoid.charAt(0)}</Text>
-            <Text style={s.factoidText}>{factoid.factoid.slice(1)}</Text>
-          </View>
+            <View style={s.ruleDivider} />
 
-          <View style={s.doubleRuleBottom}>
-            <View style={s.rule} />
-            <View style={[s.rule, { marginTop: 2 }]} />
-          </View>
+            <View style={s.factoidBody}>
+              <Text style={s.dropCap}>{factoid.factoid.charAt(0)}</Text>
+              <Text style={s.factoidText}>{factoid.factoid.slice(1)}</Text>
+            </View>
 
-          <View style={s.yourMoveSection}>
-            <Text style={s.yourMoveLabel}>YOUR MOVE</Text>
-            <Text style={s.yourMoveText}>
-              {getConversationOpener(factoid)}
-            </Text>
+            <View style={s.doubleRuleInner}>
+              <View style={s.ruleThick} />
+              <View style={{ height: 3 }} />
+              <View style={[s.ruleThin, { backgroundColor: colors.borderSubtle }]} />
+            </View>
+
+            <View style={s.yourMoveSection}>
+              <Text style={s.yourMoveLabel}>YOUR MOVE</Text>
+              <Text style={s.yourMoveText}>{getConversationOpener(factoid)}</Text>
+            </View>
           </View>
         </Animated.View>
       )}
 
       <View style={s.doubleRuleBottom}>
-        <View style={s.rule} />
-        <View style={[s.rule, { marginTop: 2 }]} />
+        <View style={s.ruleThick} />
+        <View style={{ height: 3 }} />
+        <View style={[s.ruleThin, { opacity: 0.4 }]} />
       </View>
     </View>
   );
@@ -146,17 +197,17 @@ export default function SpinningWheel({ factoid, isSpinning, onRevealComplete }:
 
 function getConversationOpener(factoid: Factoid): string {
   const openers: Record<string, string> = {
-    crime: `"You know, the most interesting criminals in history never got caught — they got celebrated."`,
-    science: `"There's a fact about this neighborhood that would make your physics professor cry into their coffee."`,
-    culture: `"The cultural history of this block is, frankly, more interesting than anything you'll read this week."`,
-    politics: `"Politicians here used to be genuinely colorful. Now they're just... loud."`,
-    sports: `"Athletic achievement used to mean something very different right here."`,
-    weird: `"If I told you what happened here, you wouldn't believe me. But I have a source."`,
-    food: `"The culinary history of this exact spot is the reason I will never apologize for ordering the expensive thing."`,
-    architecture: `"The building you're standing near has a past that the architects would very much prefer you didn't know."`,
-    nature: `"Nature has been absolutely unhinged in this neighborhood. Let me explain."`,
+    crime: `\u201cThe most interesting criminals in history never got caught \u2014 they got celebrated.\u201d`,
+    science: `\u201cThere\u2019s a fact about this neighborhood that would make your physics professor cry into their coffee.\u201d`,
+    culture: `\u201cThe cultural history of this block is, frankly, more interesting than anything you\u2019ll read this week.\u201d`,
+    politics: `\u201cPoliticians here used to be genuinely colorful. Now they\u2019re just\u2026 loud.\u201d`,
+    sports: `\u201cAthletic achievement used to mean something very different right here.\u201d`,
+    weird: `\u201cIf I told you what happened here, you wouldn\u2019t believe me. But I have a source.\u201d`,
+    food: `\u201cThe culinary history of this exact spot is the reason I will never apologize for ordering the expensive thing.\u201d`,
+    architecture: `\u201cThe building you\u2019re standing near has a past that the architects would very much prefer you didn\u2019t know.\u201d`,
+    nature: `\u201cNature has been absolutely unhinged in this neighborhood. Let me explain.\u201d`,
   };
-  return openers[factoid.category] ?? `"The history here is, frankly, more interesting than most people."`;
+  return openers[factoid.category] ?? `\u201cThe history here is, frankly, more interesting than most people.\u201d`;
 }
 
 const styles = (colors: ReturnType<typeof useColors>) =>
@@ -165,36 +216,66 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 20,
       marginTop: 8,
     },
-    rule: {
+    ruleThick: {
+      height: 2,
+      backgroundColor: colors.border,
+    },
+    ruleThin: {
       height: 1,
       backgroundColor: colors.border,
+    },
+    ruleDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 12,
     },
     doubleRuleTop: {
       marginBottom: 20,
     },
     doubleRuleBottom: {
       marginTop: 16,
-      marginBottom: 0,
     },
     spinnerBox: {
       minHeight: 80,
       alignItems: "center",
       justifyContent: "center",
       paddingVertical: 20,
+      gap: 16,
     },
     spinnerText: {
-      fontFamily: "Courier",
-      fontSize: 16,
+      fontFamily: serifFont,
+      fontSize: 17,
       color: colors.blush,
-      letterSpacing: 1,
       fontStyle: "italic",
       textAlign: "center",
     },
+    dotsRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    dot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.bourbon,
+    },
     factoidCard: {
-      backgroundColor: colors.card,
-      padding: 20,
+      backgroundColor: colors.cardElevated,
       borderWidth: 1,
       borderColor: colors.border,
+      overflow: "hidden",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
+      elevation: 10,
+    },
+    cummerbundStripe: {
+      height: 3,
+      backgroundColor: colors.powderBlue,
+    },
+    cardInner: {
+      padding: 20,
     },
     cardHeader: {
       flexDirection: "row",
@@ -208,7 +289,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       letterSpacing: 3,
       color: colors.powderBlue,
     },
-    dot: {
+    headerDot: {
       width: 4,
       height: 4,
       backgroundColor: colors.smoke,
@@ -220,43 +301,41 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.smoke,
     },
     locationRow: {
-      marginBottom: 12,
+      marginBottom: 4,
     },
     locationText: {
       fontFamily: "Courier",
       fontSize: 12,
-      color: colors.cream,
+      color: colors.creamMuted,
       letterSpacing: 1,
     },
     factoidBody: {
       flexDirection: "row",
-      marginTop: 12,
-      marginBottom: 4,
       flexWrap: "wrap",
+      marginBottom: 4,
     },
     dropCap: {
-      fontSize: 48,
-      lineHeight: 48,
+      fontSize: 52,
+      lineHeight: 50,
       color: colors.bourbon,
-      fontFamily: "Courier",
-      fontWeight: "bold" as const,
-      marginRight: 4,
-      marginTop: -4,
-      float: "left",
+      fontFamily: serifFont,
+      marginRight: 6,
+      marginTop: -2,
     } as any,
     factoidText: {
-      fontFamily: "Courier",
-      fontSize: 14,
-      lineHeight: 22,
-      color: colors.cream,
+      fontFamily: serifFont,
+      fontSize: 18,
+      lineHeight: 30,
+      color: colors.textPrimary,
       flex: 1,
       flexShrink: 1,
     },
-    yourMoveSection: {
+    doubleRuleInner: {
       marginTop: 16,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      marginBottom: 0,
+    },
+    yourMoveSection: {
+      paddingTop: 14,
     },
     yourMoveLabel: {
       fontFamily: "Courier",
@@ -266,10 +345,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 6,
     },
     yourMoveText: {
-      fontFamily: "Courier",
-      fontSize: 13,
+      fontFamily: serifFont,
+      fontSize: 14,
       color: colors.smoke,
-      lineHeight: 20,
+      lineHeight: 22,
       fontStyle: "italic",
     },
   });
