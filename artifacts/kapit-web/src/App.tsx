@@ -17,10 +17,14 @@ function HomeScreen() {
     addToRepertoire,
     repertoire,
     triggerSnap,
+    triggerFreestyle,
     isWildcard,
+    isFreestyle,
     loadingReady,
     loadingMessage,
     loadingTick,
+    demoMode,
+    toggleDemoMode,
   } = useKapit();
 
   const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
@@ -75,6 +79,25 @@ function HomeScreen() {
     void triggerSnap();
   }, [selectedLocation, phase, triggerSnap]);
 
+  const handleFreestyle = useCallback(() => {
+    if (phase === "spinning") return;
+    setPhase("spinning");
+    void triggerFreestyle();
+  }, [phase, triggerFreestyle]);
+
+  const tapTimesRef = useRef<number[]>([]);
+  const [wordmarkGlow, setWordmarkGlow] = useState(false);
+  const handleWordmarkTap = useCallback(() => {
+    const now = Date.now();
+    tapTimesRef.current = [...tapTimesRef.current, now].filter((t) => now - t < 800);
+    if (tapTimesRef.current.length >= 3) {
+      tapTimesRef.current = [];
+      toggleDemoMode();
+      setWordmarkGlow(true);
+      window.setTimeout(() => setWordmarkGlow(false), 700);
+    }
+  }, [toggleDemoMode]);
+
   const handleRevealComplete = useCallback(() => {
     setPhase("revealed");
     const f = getCurrentFactoid();
@@ -83,8 +106,9 @@ function HomeScreen() {
 
   const handleAgain = useCallback(() => {
     setPhase("spinning");
-    void triggerSnap();
-  }, [triggerSnap]);
+    if (isFreestyle) void triggerFreestyle();
+    else void triggerSnap();
+  }, [triggerSnap, triggerFreestyle, isFreestyle]);
 
   const currentFactoid = getCurrentFactoid();
   const loadingMessages = [
@@ -102,7 +126,28 @@ function HomeScreen() {
   const loadingMessageIndex = loadingTick % loadingMessages.length;
 
   return (
-    <div style={{ height: "100vh", backgroundColor: "var(--cream)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ height: "100vh", backgroundColor: "var(--cream)", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      {demoMode && (
+        <div
+          className="font-mono"
+          style={{
+            position: "absolute",
+            top: 26,
+            right: 10,
+            zIndex: 50,
+            backgroundColor: "var(--warm-black)",
+            color: "var(--brass-highlight)",
+            padding: "3px 7px",
+            borderRadius: 2,
+            fontSize: 9,
+            letterSpacing: 2,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+            pointerEvents: "none",
+          }}
+        >
+          ◆ DEMO
+        </div>
+      )}
       <div className="marquee-bar">
         <div className="marquee-content font-mono" style={{ color: "var(--cream)", fontSize: 10, letterSpacing: 2, textTransform: "uppercase" }}>
           {MARQUEE_TEXT.repeat(3)}
@@ -130,6 +175,7 @@ function HomeScreen() {
 
           <h1
             className="font-display"
+            onClick={handleWordmarkTap}
             style={{
               fontSize: 78,
               lineHeight: 1,
@@ -139,6 +185,11 @@ function HomeScreen() {
               margin: "8px 0 4px",
               letterSpacing: "-0.02em",
               fontVariationSettings: "'SOFT' 50",
+              cursor: "pointer",
+              userSelect: "none",
+              WebkitUserSelect: "none" as any,
+              transition: "filter 0.4s ease",
+              filter: wordmarkGlow ? "drop-shadow(0 0 14px rgba(196,121,58,0.85))" : "none",
             }}
           >
             <span style={{ color: "var(--warm-black)" }}>K</span>
@@ -172,6 +223,28 @@ function HomeScreen() {
         </div>
 
         <LocationSelector onLocationSelected={handleLocationSelected} />
+
+        <div style={{ display: "flex", justifyContent: "center", paddingLeft: 20, paddingRight: 20, marginTop: 4, marginBottom: 8 }}>
+          <button
+            onClick={handleFreestyle}
+            disabled={phase === "spinning"}
+            className="font-mono"
+            style={{
+              background: "transparent",
+              border: "1px solid var(--bourbon)",
+              color: "var(--bourbon)",
+              padding: "8px 14px",
+              borderRadius: 4,
+              cursor: phase === "spinning" ? "wait" : "pointer",
+              fontSize: 11,
+              letterSpacing: 2,
+              textTransform: "lowercase",
+              opacity: phase === "spinning" ? 0.5 : 1,
+            }}
+          >
+            ⚡ freestyle <span style={{ color: "var(--smoke)", marginLeft: 6 }}>· bonus pull</span>
+          </button>
+        </div>
 
         {locationSelected && (
           <div style={{ paddingLeft: 20, paddingRight: 20, paddingTop: 8, paddingBottom: 8 }}>
@@ -273,7 +346,8 @@ function HomeScreen() {
             isSpinning={phase === "spinning"}
             onRevealComplete={handleRevealComplete}
             onAgain={handleAgain}
-            isWildcard={isWildcard}
+            isWildcard={isWildcard && !isFreestyle}
+            isFreestyle={isFreestyle}
           />
         )}
 

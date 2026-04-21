@@ -1,0 +1,45 @@
+Add two features:
+FEATURE 1 — DEMO MODE:
+Add a hidden demo mode that pre-loads a curated set of the best possible facts so the app works with zero lag. No API calls, instant snaps.
+
+Create a file called demo-facts.js (or demo-facts.ts) with an array of 30-40 hand-picked incredible factoids. These should be the absolute best facts the app has ever generated — the ones that make people say 'no way.' Organize them with the same structure as API facts: factoid, year, category, location. Include a mix of NYC facts, world facts, and wildcard facts.
+
+Here are some to start with — generate more in the same style:
+
+The Stonewall riot and the shot glass (1969, West Village)
+George Washington's American-made suit at his inauguration and fumbling the oath (1789, Wall Street)
+Emily Roebling crossing the Brooklyn Bridge with a rooster (1883, Brooklyn Bridge)
+CBGB stood for Country Bluegrass and Blues but only played punk (1973, Bowery)
+The 23 Skidoo origin from men watching wind lift skirts at the Flatiron (1902, Flatiron)
+The 1929 crash sandwich theft from the police blotter (1929, Times Square)
+Chanel No. 5 was number 5 because Coco was superstitious (1921, Midtown)
+Studio 54 door policy based on 'the salad' — turned Mick Jagger away twice (1978, Midtown)
+The secret train platform under the Waldorf that FDR used to hide his polio (1931, Midtown)
+McSorley's didn't serve women until 1970 and the women who won bought the first round (1854, East Village)
+Central Park was deliberately designed as a class filter disguised as landscape (1858, Central Park)
+Dorothy Parker was fined a nickel every time she swore at the Algonquin Round Table (1919, Midtown)
+The Ellis Island name change myth — names were mangled at the port of departure, not arrival (1892, Harbor)
+Generate 20+ more incredible facts from around the world: London, Paris, Tokyo, Rome, Chicago, LA, etc.
+
+
+Activate demo mode with a hidden gesture — triple tap the Kapit wordmark at the top. When activated, show a brief subtle flash or the wordmark briefly glows, and a tiny 'DEMO' badge appears in the corner. Triple tap again to deactivate.
+In demo mode:
+
+Skip ALL API calls
+The loading animation never appears
+When the user snaps, immediately start the spinning wheel with teasers and land on a fact from the demo array within 1-2 seconds total
+Cycle through demo facts without repeating until all are exhausted, then reshuffle
+The whip crack sound still plays
+Everything else looks and works identically to the real app
+
+
+Demo mode state should persist across page refreshes (use localStorage) so you don't have to re-activate it every time you open the app
+
+FEATURE 2 — FREESTYLE BUTTON:
+Add a 'Freestyle' button that pulls a random fascinating fact from anywhere in the world, independent of location.
+
+Place it as a small outlined button below the location card, styled in JetBrains Mono: '⚡ freestyle'
+When tapped in normal mode: make an API call with a special prompt that says 'Give me 1 completely random, fascinating, conversation-worthy historical factoid from ANYWHERE in the world. Make it the wildest, most surprising fact you can think of. Same rules — weird beats famous, bar-conversation tone, 2-3 sentences.' Show the same spinning wheel and reveal animation.
+When tapped in demo mode: instantly pull a random fact from the demo array with no API call, same instant snap behavior.
+Freestyle facts should show location as wherever the fact happened (e.g., 'Paris, France' or 'Tokyo, Japan') with the category badge showing 'FREESTYLE' or '⚡ WILDCARD'.
+Freestyle does NOT count against the user's daily snap limit — it's a bonus pull. This encourages people to use it and see the value of the app.

@@ -52,9 +52,10 @@ interface Props {
   onRevealComplete: () => void;
   onAgain: () => void;
   isWildcard?: boolean;
+  isFreestyle?: boolean;
 }
 
-export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onAgain, isWildcard }: Props) {
+export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onAgain, isWildcard, isFreestyle }: Props) {
   const [displayText, setDisplayText] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [revealKey, setRevealKey] = useState(0);
@@ -184,11 +185,15 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onA
           padding: 22,
         }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
-            {isWildcard && (
+            {isFreestyle ? (
+              <span className="pill font-mono" style={{ backgroundColor: "var(--brass)", color: "var(--warm-black)", border: "1px solid var(--warm-black)" }}>
+                ⚡ FREESTYLE
+              </span>
+            ) : isWildcard ? (
               <span className="pill font-mono" style={{ backgroundColor: "var(--brass)", color: "var(--warm-black)", border: "1px solid var(--warm-black)" }}>
                 ✦ WILDCARD
               </span>
-            )}
+            ) : null}
             <span className="pill pill-bourbon font-mono">{getCategoryLabel(factoid.category)}</span>
             <span className="pill pill-dark font-mono">{shortYear(factoid.year)}</span>
             <span className="pill pill-blue-soft font-mono">◆ {factoid.location}</span>
