@@ -197,11 +197,31 @@ function HomeScreen() {
             <div className="font-mono" style={{ fontSize: 11, letterSpacing: 3, color: "var(--bourbon)", marginBottom: 10 }}>
               KAPIT STUNTIN'
             </div>
-            <p className="font-serif" style={{ fontStyle: "italic", fontSize: 14, lineHeight: 1.55, color: "var(--warm-black)", marginBottom: 12 }}>
-              Unlimited pulls. No daily cap. Show off properly.
-            </p>
-            <div className="font-mono" style={{ fontSize: 12, letterSpacing: 1.5, color: "var(--smoke)", marginBottom: 14 }}>
-              $3.99 / mo
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+              {[
+                "Unlimited pulls — no daily cap",
+                "Priority fact loading — faster snaps",
+                "Wildcard facts from around the world",
+                "Save unlimited facts to your repertoire",
+                "No ads, ever",
+              ].map((item) => (
+                <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <span className="font-mono" style={{ fontSize: 11, lineHeight: 1.4, color: "var(--bourbon)", marginTop: 2 }}>
+                    ◆
+                  </span>
+                  <span className="font-serif" style={{ fontSize: 14, lineHeight: 1.55, color: "var(--warm-black)" }}>
+                    {item}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <div className="font-mono" style={{ fontSize: 12, letterSpacing: 1.5, color: "var(--smoke)", marginBottom: 4 }}>
+                $3.99 / mo
+              </div>
+              <div className="font-mono" style={{ fontSize: 10, letterSpacing: 1, color: "var(--smoke-muted)" }}>
+                cancel anytime
+              </div>
             </div>
             <button
               onClick={(e) => e.preventDefault()}
