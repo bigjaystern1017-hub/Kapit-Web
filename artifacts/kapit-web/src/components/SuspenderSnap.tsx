@@ -229,7 +229,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
       {!isDragging && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 24 }}>
           <div style={{ width: 20, height: 1, backgroundColor: "var(--smoke)" }} />
-          <span className="font-mono" style={{ fontSize: 10, color: "var(--smoke)", letterSpacing: 3 }}>TUG IT</span>
+          <span className="font-mono" style={{ fontSize: 10, color: "var(--smoke)", letterSpacing: 3 }}>SNAP IT 2 KAPIT</span>
           <div style={{ width: 20, height: 1, backgroundColor: "var(--smoke)" }} />
         </div>
       )}

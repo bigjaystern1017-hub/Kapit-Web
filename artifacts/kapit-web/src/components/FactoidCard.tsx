@@ -218,7 +218,7 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onA
 
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginBottom: 18 }}>
             <div className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)", marginBottom: 6, textTransform: "uppercase" }}>
-              → say this out loud
+              — your audience awaits —
             </div>
             <div className="font-serif" style={{ fontSize: 15, color: "var(--warm-black)", lineHeight: 1.6, fontStyle: "italic" }}>
               {CONVERSATION_OPENERS[factoid.category] ?? "\u201cThe history here is, frankly, more interesting than most people.\u201d"}

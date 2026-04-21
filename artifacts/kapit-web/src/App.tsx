@@ -5,7 +5,7 @@ import FactoidCard from "@/components/FactoidCard";
 import Repertoire from "@/components/Repertoire";
 import { KapitProvider, useKapit } from "@/context/KapitContext";
 
-const MARQUEE_TEXT = " BE INSUFFERABLE  ★  BE INSUFFERABLE  ★  BE INSUFFERABLE  ★  BE INSUFFERABLE  ★  BE INSUFFERABLE  ★  BE INSUFFERABLE  ★ ";
+const MARQUEE_TEXT = " Be Insufferable, Everywhere™  ★  Be Insufferable, Everywhere™  ★  Be Insufferable, Everywhere™  ★ ";
 
 function HomeScreen() {
   const {
@@ -79,7 +79,7 @@ function HomeScreen() {
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingLeft: 16, paddingRight: 16, marginBottom: 24, textAlign: "center" }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
-            <span className="pill pill-outlined font-mono">◆ gentleman&apos;s companion</span>
+            <span className="pill pill-outlined font-mono">◆ chronically interesting</span>
             <span className="pill pill-blue font-mono">· v1.0</span>
           </div>
 
@@ -113,7 +113,7 @@ function HomeScreen() {
             }}
           >
             <span className="font-serif" style={{ fontStyle: "italic", fontSize: 14, letterSpacing: "0.5px" }}>
-              Be insufferable, everywhere.
+              Be Chronically Interesting.
             </span>
           </div>
 
@@ -131,10 +131,10 @@ function HomeScreen() {
                 PULL
               </h2>
               <div className="font-serif" style={{ fontStyle: "italic", fontSize: 14, color: "var(--smoke)", marginTop: 6 }}>
-                the cord. that&apos;s it. that&apos;s the app.
+                Pull. Snap. Be amazed. Yer welcome.
               </div>
               <div className="font-mono" style={{ fontSize: 11, letterSpacing: 4, color: "var(--bourbon)", marginTop: 14 }}>
-                ↓ ↓ ↓ PULL ↓ ↓ ↓
+                — pull the lever —
               </div>
             </div>
 
@@ -189,7 +189,7 @@ function HomeScreen() {
               KAPIT / BLACK
             </div>
             <p className="font-serif" style={{ fontStyle: "italic", fontSize: 15, lineHeight: 1.55, color: "var(--cream)", marginBottom: 14 }}>
-              after dark. unexpurgated. the ones your HR department will flag. $9.99. your call.
+              after dark. unfiltered. the facts your HR department will flag. $9.99. your call.
             </p>
             <button
               onClick={(e) => e.preventDefault()}
@@ -213,7 +213,7 @@ function HomeScreen() {
 
         <div style={{ paddingTop: 28, paddingBottom: 20, textAlign: "center" }}>
           <span className="font-mono" style={{ fontSize: 9, letterSpacing: 2, color: "var(--smoke-muted)" }}>
-            Kapit™ &middot; 2026 &middot; do not use in elevators
+            Kapit™ &middot; 2026 &middot; Snap It 2 Kapit
           </span>
         </div>
       </div>
