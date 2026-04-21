@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import whipCrackUrl from "@assets/stretch-rubber_1776726290892.mp3";
+import whipCrackUrl from "@assets/whip-crack_1776726290894.mp3";
 
 const DRAG_THRESHOLD = 60;
 const MAX_DRAG = 220;
