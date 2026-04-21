@@ -64,10 +64,16 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   function playWhipCrack() {
     const audio = whipAudioRef.current;
     if (!audio) return;
-    audio.currentTime = 0;
-    audio.volume = 1.0;
-    audio.playbackRate = 1.0;
-    audio.play().catch(() => {});
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 1.0;
+      audio.playbackRate = 1.0;
+      const result = audio.play();
+      if (result && typeof result.catch === "function") {
+        result.catch(() => {});
+      }
+    } catch {}
   }
 
   const fireSnap = useCallback(() => {

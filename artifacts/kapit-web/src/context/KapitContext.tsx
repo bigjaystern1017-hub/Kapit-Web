@@ -26,6 +26,7 @@ interface KapitContextType {
   fetchFactoids: () => Promise<void>;
   getCurrentFactoid: () => Factoid | null;
   advanceFactoidIndex: () => void;
+  clearFactoids: () => void;
 }
 
 const KapitContext = createContext<KapitContextType | null>(null);
@@ -34,12 +35,35 @@ const STORAGE_KEY = "kapit_repertoire";
 const BASE_URL = import.meta.env.BASE_URL || "/kapit-web/";
 
 export function KapitProvider({ children }: { children: React.ReactNode }) {
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [selectedLocation, setSelectedLocationState] = useState<Location | null>(null);
   const [factoids, setFactoids] = useState<Factoid[]>([]);
   const [currentFactoidIndex, setCurrentFactoidIndex] = useState(0);
   const [repertoire, setRepertoire] = useState<Factoid[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedLocationRef = useRef<Location | null>(null);
+  selectedLocationRef.current = selectedLocation;
+
+  const setSelectedLocation = useCallback((loc: Location) => {
+    const prev = selectedLocationRef.current;
+    const isDifferent =
+      !prev ||
+      prev.lat !== loc.lat ||
+      prev.lng !== loc.lng ||
+      prev.name !== loc.name;
+    setSelectedLocationState(loc);
+    if (isDifferent) {
+      setFactoids([]);
+      setCurrentFactoidIndex(0);
+      setError(null);
+    }
+  }, []);
+
+  const clearFactoids = useCallback(() => {
+    setFactoids([]);
+    setCurrentFactoidIndex(0);
+  }, []);
 
   useEffect(() => {
     try {
@@ -59,7 +83,8 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fetchFactoids = useCallback(async () => {
-    if (!selectedLocation) return;
+    const loc = selectedLocationRef.current;
+    if (!loc) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -68,18 +93,27 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lat: selectedLocation.lat,
-          lng: selectedLocation.lng,
-          locationName: selectedLocation.name,
+          lat: loc.lat,
+          lng: loc.lng,
+          locationName: loc.name,
         }),
       });
       if (!response.ok) throw new Error("Failed to fetch factoids");
       const data = await response.json();
+      const current = selectedLocationRef.current;
+      if (
+        !current ||
+        current.lat !== loc.lat ||
+        current.lng !== loc.lng ||
+        current.name !== loc.name
+      ) {
+        return;
+      }
       const mapped: Factoid[] = data.factoids.map(
         (f: { factoid: string; year: string; category: string }, i: number) => ({
           ...f,
-          location: selectedLocation.name,
-          id: `${selectedLocation.lat.toFixed(3)}-${selectedLocation.lng.toFixed(3)}-${i}-${Date.now()}`,
+          location: loc.name,
+          id: `${loc.lat.toFixed(3)}-${loc.lng.toFixed(3)}-${i}-${Date.now()}`,
         })
       );
       setFactoids(mapped);
@@ -89,7 +123,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedLocation]);
+  }, []);
 
   const getCurrentFactoid = useCallback(() => {
     if (factoids.length === 0) return null;
@@ -114,6 +148,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         fetchFactoids,
         getCurrentFactoid,
         advanceFactoidIndex,
+        clearFactoids,
       }}
     >
       {children}
