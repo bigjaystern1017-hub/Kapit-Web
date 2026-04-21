@@ -86,14 +86,18 @@ function HomeScreen() {
               lineHeight: 1,
               fontStyle: "italic",
               fontWeight: 900,
-              color: "var(--bourbon)",
               transform: "rotate(-2.5deg)",
               margin: "8px 0 4px",
               letterSpacing: "-0.02em",
               fontVariationSettings: "'SOFT' 50",
             }}
           >
-            Kapit<sup style={{ fontSize: 14, fontWeight: 700, marginLeft: 2, top: "-1.4em" }}>™</sup>
+            <span style={{ color: "var(--warm-black)" }}>K</span>
+            <span style={{ color: "var(--bourbon)" }}>a</span>
+            <span style={{ color: "var(--powder-blue)" }}>p</span>
+            <span style={{ color: "var(--bourbon)" }}>i</span>
+            <span style={{ color: "var(--warm-black)" }}>t</span>
+            <sup style={{ fontSize: 14, fontWeight: 700, marginLeft: 2, top: "-1.4em", color: "var(--bourbon)" }}>™</sup>
           </h1>
 
           <div
@@ -114,7 +118,7 @@ function HomeScreen() {
           </div>
 
           <span className="font-mono" style={{ fontSize: 11, letterSpacing: 2, color: "var(--smoke)", textTransform: "lowercase", marginTop: 22 }}>
-            drop a fact &middot; no cap
+            drop a fact · no cap
           </span>
         </div>
 
@@ -162,7 +166,7 @@ function HomeScreen() {
               </span>
               <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "var(--smoke-muted)" }} />
               <a href="#" onClick={(e) => e.preventDefault()} className="font-mono" style={{ fontSize: 11, letterSpacing: 1.5, color: "var(--bourbon)", textDecoration: "none", borderBottom: "1px solid var(--bourbon)" }}>
-                go unlimited →
+                go Stuntin' →
               </a>
             </div>
           </div>
@@ -181,6 +185,44 @@ function HomeScreen() {
         <Repertoire repertoire={repertoire} />
 
         <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 32 }}>
+          <div style={{
+            backgroundColor: "var(--card)",
+            color: "var(--warm-black)",
+            padding: 22,
+            borderRadius: 4,
+            borderLeft: "3px solid var(--bourbon)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            marginBottom: 16,
+          }}>
+            <div className="font-mono" style={{ fontSize: 11, letterSpacing: 3, color: "var(--bourbon)", marginBottom: 10 }}>
+              KAPIT STUNTIN'
+            </div>
+            <p className="font-serif" style={{ fontStyle: "italic", fontSize: 14, lineHeight: 1.55, color: "var(--warm-black)", marginBottom: 12 }}>
+              Unlimited pulls. No daily cap. Show off properly.
+            </p>
+            <div className="font-mono" style={{ fontSize: 12, letterSpacing: 1.5, color: "var(--smoke)", marginBottom: 14 }}>
+              $3.99 / mo
+            </div>
+            <button
+              onClick={(e) => e.preventDefault()}
+              className="btn-outlined"
+              style={{
+                background: "transparent",
+                border: "1px solid var(--bourbon)",
+                color: "var(--bourbon)",
+                padding: "10px 18px",
+                cursor: "pointer",
+                borderRadius: 4,
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 11,
+                letterSpacing: 2,
+                textTransform: "lowercase",
+              }}
+            >
+              start stuntin' →
+            </button>
+          </div>
+
           <div style={{ backgroundColor: "var(--warm-black)", color: "var(--cream)", padding: 22, borderRadius: 4, boxShadow: "0 4px 14px rgba(0,0,0,0.18)" }}>
             <div className="font-mono" style={{ fontSize: 11, letterSpacing: 4, color: "var(--brass-highlight)", marginBottom: 8 }}>
               KAPIT / BLACK
@@ -284,7 +326,7 @@ function HomeScreen() {
 
         <div style={{ paddingTop: 28, paddingBottom: 20, textAlign: "center" }}>
           <span className="font-mono" style={{ fontSize: 9, letterSpacing: 2, color: "var(--smoke-muted)" }}>
-            Kapit™ &middot; 2026 &middot; Snap It 2 Kapit
+            Kapit™ · 2026 · Snap It 2 Kapit
           </span>
         </div>
       </div>
