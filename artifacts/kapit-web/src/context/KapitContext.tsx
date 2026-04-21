@@ -27,6 +27,8 @@ interface KapitContextType {
   getCurrentFactoid: () => Factoid | null;
   advanceFactoidIndex: () => void;
   clearFactoids: () => void;
+  triggerSnap: () => Promise<void>;
+  isWildcard: boolean;
 }
 
 const KapitContext = createContext<KapitContextType | null>(null);
@@ -42,8 +44,16 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [snapCount, setSnapCount] = useState(0);
+  const [wildcardFactoid, setWildcardFactoid] = useState<Factoid | null>(null);
+  const [isWildcard, setIsWildcard] = useState(false);
+
   const selectedLocationRef = useRef<Location | null>(null);
   selectedLocationRef.current = selectedLocation;
+  const factoidsRef = useRef<Factoid[]>([]);
+  factoidsRef.current = factoids;
+  const isLoadingRef = useRef(false);
+  isLoadingRef.current = isLoading;
 
   const setSelectedLocation = useCallback((loc: Location) => {
     const prev = selectedLocationRef.current;
@@ -52,11 +62,16 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       prev.lat !== loc.lat ||
       prev.lng !== loc.lng ||
       prev.name !== loc.name;
+    selectedLocationRef.current = loc;
     setSelectedLocationState(loc);
     if (isDifferent) {
       setFactoids([]);
+      factoidsRef.current = [];
       setCurrentFactoidIndex(0);
       setError(null);
+      setWildcardFactoid(null);
+      setIsWildcard(false);
+      void fetchFactoidsRef.current?.();
     }
   }, []);
 
@@ -82,10 +97,14 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const fetchFactoidsRef = useRef<(() => Promise<void>) | null>(null);
+
   const fetchFactoids = useCallback(async () => {
     const loc = selectedLocationRef.current;
     if (!loc) return;
+    if (isLoadingRef.current) return;
     setIsLoading(true);
+    isLoadingRef.current = true;
     setError(null);
     try {
       const apiBase = BASE_URL.replace(/\/$/, "").replace("/kapit-web", "");
@@ -117,18 +136,68 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         })
       );
       setFactoids(mapped);
+      factoidsRef.current = mapped;
       setCurrentFactoidIndex(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
+    }
+  }, []);
+  fetchFactoidsRef.current = fetchFactoids;
+
+  const fetchWildcard = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const apiBase = BASE_URL.replace(/\/$/, "").replace("/kapit-web", "");
+      const response = await fetch(`${apiBase}/api/kapit/wildcard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!response.ok) throw new Error("Failed to fetch wildcard");
+      const data = await response.json();
+      const f = data.factoid as { factoid: string; year: string; category: string };
+      const wc: Factoid = {
+        ...f,
+        location: "Anywhere",
+        id: `wild-${Date.now()}`,
+      };
+      setWildcardFactoid(wc);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setIsWildcard(false);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
+  const triggerSnap = useCallback(async () => {
+    const next = snapCount + 1;
+    setSnapCount(next);
+    const isFourth = next % 4 === 0;
+    if (isFourth) {
+      setWildcardFactoid(null);
+      setIsWildcard(true);
+      await fetchWildcard();
+    } else {
+      setIsWildcard(false);
+      setWildcardFactoid(null);
+      if (factoidsRef.current.length === 0) {
+        await fetchFactoids();
+      } else {
+        setCurrentFactoidIndex((i) => i + 1);
+      }
+    }
+  }, [snapCount, fetchWildcard, fetchFactoids]);
+
   const getCurrentFactoid = useCallback(() => {
+    if (isWildcard) return wildcardFactoid;
     if (factoids.length === 0) return null;
     return factoids[currentFactoidIndex % factoids.length] ?? null;
-  }, [factoids, currentFactoidIndex]);
+  }, [factoids, currentFactoidIndex, isWildcard, wildcardFactoid]);
 
   const advanceFactoidIndex = useCallback(() => {
     setCurrentFactoidIndex((i) => i + 1);
@@ -149,6 +218,8 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         getCurrentFactoid,
         advanceFactoidIndex,
         clearFactoids,
+        triggerSnap,
+        isWildcard,
       }}
     >
       {children}

@@ -5,24 +5,26 @@ import FactoidCard from "@/components/FactoidCard";
 import Repertoire from "@/components/Repertoire";
 import { KapitProvider, useKapit } from "@/context/KapitContext";
 
-const MARQUEE_TEXT = " Be Insufferable, Everywhere™  ★  Be Insufferable, Everywhere™  ★  Be Insufferable, Everywhere™  ★ ";
+const MARQUEE_TEXT = " Charisma in your pocket\u2026  ★  Charisma in your pocket\u2026  ★  Charisma in your pocket\u2026  ★ ";
 
 function HomeScreen() {
   const {
     selectedLocation,
-    factoids,
     isLoading,
     error,
     fetchFactoids,
     getCurrentFactoid,
-    advanceFactoidIndex,
     addToRepertoire,
     repertoire,
+    triggerSnap,
+    isWildcard,
   } = useKapit();
 
   const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
   const [locationSelected, setLocationSelected] = useState(false);
   const [snapActive, setSnapActive] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleLocationSelected = () => {
@@ -33,15 +35,9 @@ function HomeScreen() {
   const handleSnap = useCallback(() => {
     if (!selectedLocation) return;
     if (phase === "spinning") return;
-
-    if (factoids.length === 0) {
-      setPhase("spinning");
-      fetchFactoids();
-    } else {
-      advanceFactoidIndex();
-      setPhase("spinning");
-    }
-  }, [selectedLocation, phase, factoids.length, fetchFactoids, advanceFactoidIndex]);
+    setPhase("spinning");
+    void triggerSnap();
+  }, [selectedLocation, phase, triggerSnap]);
 
   const handleRevealComplete = useCallback(() => {
     setPhase("revealed");
@@ -50,9 +46,9 @@ function HomeScreen() {
   }, [getCurrentFactoid, addToRepertoire]);
 
   const handleAgain = useCallback(() => {
-    advanceFactoidIndex();
     setPhase("spinning");
-  }, [advanceFactoidIndex]);
+    void triggerSnap();
+  }, [triggerSnap]);
 
   const currentFactoid = getCurrentFactoid();
 
@@ -178,6 +174,7 @@ function HomeScreen() {
             isSpinning={phase === "spinning"}
             onRevealComplete={handleRevealComplete}
             onAgain={handleAgain}
+            isWildcard={isWildcard}
           />
         )}
 
@@ -189,25 +186,99 @@ function HomeScreen() {
               KAPIT / BLACK
             </div>
             <p className="font-serif" style={{ fontStyle: "italic", fontSize: 15, lineHeight: 1.55, color: "var(--cream)", marginBottom: 14 }}>
-              after dark. unfiltered. the facts your HR department will flag. $9.99. your call.
+              that loud pack. after dark. unfiltered. facts your HR department will flag. $9.99. your call.
             </p>
-            <button
-              onClick={(e) => e.preventDefault()}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--cream)",
-                color: "var(--cream)",
-                padding: "10px 18px",
-                cursor: "pointer",
-                borderRadius: 4,
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 11,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-              }}
-            >
-              flip to black →
-            </button>
+
+            {!showInvite && (
+              <>
+                <button
+                  onClick={() => setShowInvite(true)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid var(--cream)",
+                    color: "var(--cream)",
+                    padding: "10px 18px",
+                    cursor: "pointer",
+                    borderRadius: 4,
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: 11,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  enter invite code →
+                </button>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--smoke-muted)", marginTop: 10, textTransform: "lowercase" }}
+                >
+                  currently invite-only
+                </div>
+              </>
+            )}
+
+            {showInvite && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                <input
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="invite code"
+                  className="font-mono"
+                  style={{
+                    border: "1px solid var(--cream)",
+                    background: "transparent",
+                    color: "var(--cream)",
+                    padding: "10px 14px",
+                    fontSize: 12,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                    outline: "none",
+                    borderRadius: 4,
+                  }}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setInviteCode("")}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid var(--cream)",
+                      color: "var(--cream)",
+                      padding: "10px 18px",
+                      cursor: "pointer",
+                      borderRadius: 4,
+                      fontFamily: "JetBrains Mono, monospace",
+                      fontSize: 11,
+                      letterSpacing: 2,
+                      textTransform: "uppercase",
+                      flex: 1,
+                    }}
+                  >
+                    submit
+                  </button>
+                  <button
+                    onClick={() => { setShowInvite(false); setInviteCode(""); }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--smoke-muted)",
+                      padding: "10px 12px",
+                      cursor: "pointer",
+                      fontFamily: "JetBrains Mono, monospace",
+                      fontSize: 10,
+                      letterSpacing: 1.5,
+                    }}
+                  >
+                    cancel
+                  </button>
+                </div>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--smoke-muted)", marginTop: 4, textTransform: "lowercase" }}
+                >
+                  currently invite-only
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
