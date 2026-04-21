@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import stretchUrl from "@assets/stretch-rubber_1776726290892.mp3";
-import whipCrackUrl from "@assets/whip-crack_1776726290894.mp3";
+import stretchUrl from "@assets/whip-crack_1776726290894.mp3";
+import whipCrackUrl from "@assets/stretch-rubber_1776726290892.mp3";
 
 const DRAG_THRESHOLD = 60;
 const MAX_DRAG = 220;
@@ -55,7 +55,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     stretch.preload = "auto";
     stretch.loop = true;
     stretch.volume = 0.3;
-    stretch.playbackRate = 0.5;
+    stretch.playbackRate = 0.7;
     stretch.load();
     stretchAudioRef.current = stretch;
 
@@ -76,7 +76,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     const audio = stretchAudioRef.current;
     if (!audio) return;
     audio.currentTime = 0;
-    audio.playbackRate = 0.5;
+    audio.playbackRate = 0.7;
     audio.volume = 0.3;
     audio.play().catch(() => {});
   }
@@ -85,7 +85,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     const audio = stretchAudioRef.current;
     if (!audio) return;
     const t = Math.min(physical / MAX_DRAG, 1);
-    audio.playbackRate = 0.5 + t * 1.0;
+    audio.playbackRate = 0.7 + t * 0.8;
     audio.volume = 0.3 + t * 0.4;
   }
 
