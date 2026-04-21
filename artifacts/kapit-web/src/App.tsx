@@ -58,10 +58,9 @@ function HomeScreen() {
 
   return (
     <div style={{ height: "100vh", backgroundColor: "var(--cream)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ height: 24, backgroundColor: "var(--warm-black)", overflow: "hidden", display: "flex", alignItems: "center", flexShrink: 0 }}>
+      <div className="marquee-bar">
         <div className="marquee-content font-mono" style={{ color: "var(--cream)", fontSize: 10, letterSpacing: 2, textTransform: "uppercase" }}>
-          <span>{MARQUEE_TEXT.repeat(6)}</span>
-          <span>{MARQUEE_TEXT.repeat(6)}</span>
+          {MARQUEE_TEXT.repeat(3)}
         </div>
       </div>
 

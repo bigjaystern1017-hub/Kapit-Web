@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import stretchUrl from "@assets/whip-crack_1776726290894.mp3";
 import whipCrackUrl from "@assets/stretch-rubber_1776726290892.mp3";
 
 const DRAG_THRESHOLD = 60;
@@ -42,7 +41,6 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   const onDragStartRef = useRef(onDragStart);
   const onDragEndRef = useRef(onDragEnd);
 
-  const stretchAudioRef = useRef<HTMLAudioElement | null>(null);
   const whipAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => { disabledRef.current = disabled; }, [disabled]);
@@ -51,14 +49,6 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
 
   useEffect(() => {
-    const stretch = new Audio(stretchUrl);
-    stretch.preload = "auto";
-    stretch.loop = true;
-    stretch.volume = 0.3;
-    stretch.playbackRate = 0.7;
-    stretch.load();
-    stretchAudioRef.current = stretch;
-
     const whip = new Audio(whipCrackUrl);
     whip.preload = "auto";
     whip.volume = 1.0;
@@ -67,34 +57,9 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     whipAudioRef.current = whip;
 
     return () => {
-      stretch.pause();
       whip.pause();
     };
   }, []);
-
-  function startStretch() {
-    const audio = stretchAudioRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    audio.playbackRate = 0.7;
-    audio.volume = 0.3;
-    audio.play().catch(() => {});
-  }
-
-  function updateStretch(physical: number) {
-    const audio = stretchAudioRef.current;
-    if (!audio) return;
-    const t = Math.min(physical / MAX_DRAG, 1);
-    audio.playbackRate = 0.7 + t * 0.8;
-    audio.volume = 0.3 + t * 0.4;
-  }
-
-  function stopStretch() {
-    const audio = stretchAudioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
-  }
 
   function playWhipCrack() {
     const audio = whipAudioRef.current;
@@ -120,7 +85,6 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
 
   const finishDrag = useCallback((currentY: number) => {
     const triggered = currentY >= DRAG_THRESHOLD && !disabledRef.current;
-    stopStretch();
     setBuckleY(0);
     setSvgY(0);
     setIsDragging(false);
@@ -136,7 +100,6 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     activeRef.current = true;
     setIsDragging(true);
     setFeedback({ text: "", pastThreshold: false });
-    startStretch();
     onDragStartRef.current?.();
   }, []);
 
@@ -147,7 +110,6 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
     setBuckleY(physical);
     setSvgY(physical);
     setFeedback(getFeedback(physical));
-    updateStretch(physical);
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -161,7 +123,6 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   const handlePointerCancel = useCallback(() => {
     if (!activeRef.current) return;
     activeRef.current = false;
-    stopStretch();
     finishDrag(0);
   }, [finishDrag]);
 

@@ -76,9 +76,14 @@ body {
   100% { opacity: 0; }
 }
 
-@keyframes marqueeScroll {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+@keyframes marqueeOnce {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(-100%); }
+}
+
+@keyframes marqueeBarCollapse {
+  from { height: 24px; }
+  to   { height: 0; opacity: 0; }
 }
 
 @keyframes locationDotPulse {
@@ -102,10 +107,20 @@ body {
 .dot-2 { animation: dotPulse 0.9s ease-in-out 0.3s infinite; }
 .dot-3 { animation: dotPulse 0.9s ease-in-out 0.6s infinite; }
 
+.marquee-bar {
+  height: 24px;
+  background-color: var(--warm-black);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  animation: marqueeBarCollapse 0.4s ease-in 15.2s forwards;
+}
+
 .marquee-content {
-  display: inline-flex;
+  display: inline-block;
   white-space: nowrap;
-  animation: marqueeScroll 28s linear infinite;
+  animation: marqueeOnce 15s linear 1 forwards;
   will-change: transform;
 }
 
