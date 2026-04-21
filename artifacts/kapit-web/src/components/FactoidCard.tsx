@@ -39,16 +39,26 @@ export function getCategoryLabel(cat: string): string {
   return CATEGORY_LABELS[cat] ?? cat.toUpperCase();
 }
 
+function shortYear(year: string): string {
+  const match = year.match(/(\d{4})/);
+  if (match) return "'" + match[1].slice(-2);
+  const m2 = year.match(/(\d{2})$/);
+  return m2 ? "'" + m2[1] : year;
+}
+
 interface Props {
   factoid: Factoid | null;
   isSpinning: boolean;
   onRevealComplete: () => void;
+  onAgain: () => void;
 }
 
-export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: Props) {
+export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onAgain }: Props) {
   const [displayText, setDisplayText] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [revealKey, setRevealKey] = useState(0);
+  const [kept, setKept] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"" | "copied">("");
 
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waitingForDataRef = useRef(false);
@@ -65,6 +75,8 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: P
     setDisplayText(f.factoid);
     setRevealed(true);
     setRevealKey((k) => k + 1);
+    setKept(false);
+    setShareStatus("");
     setTimeout(() => {
       if (cardRef.current) {
         cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -122,99 +134,125 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete }: P
     }
   }, [factoid]);
 
+  const handleShare = async () => {
+    if (!factoid) return;
+    const text = `${factoid.factoid} — Kapit™`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ text, title: "Kapit" });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShareStatus("copied");
+        setTimeout(() => setShareStatus(""), 1600);
+      }
+    } catch {}
+  };
+
   if (!isSpinning && !revealed) return null;
 
   return (
-    <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 8 }}>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ height: 2, backgroundColor: "var(--border)" }} />
-        <div style={{ height: 3 }} />
-        <div style={{ height: 1, backgroundColor: "var(--border)", opacity: 0.4 }} />
-      </div>
-
+    <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 16 }}>
       {!revealed && (
-        <div style={{ minHeight: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 20, paddingBottom: 20, gap: 16 }}>
-          <span className="font-serif" style={{ fontSize: 17, color: "var(--blush)", fontStyle: "italic", textAlign: "center" }}>
+        <div style={{
+          minHeight: 100,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: "28px 20px",
+          gap: 18,
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        }}>
+          <span className="font-serif" style={{ fontSize: 18, color: "var(--bourbon)", fontStyle: "italic", textAlign: "center" }}>
             {displayText}
           </span>
           <div style={{ display: "flex", gap: 8 }}>
-            <div className="dot-1" style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
-            <div className="dot-2" style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
-            <div className="dot-3" style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
+            <div className="dot-1" style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
+            <div className="dot-2" style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
+            <div className="dot-3" style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
           </div>
         </div>
       )}
 
       {revealed && factoid && (
         <div ref={cardRef} key={revealKey} className="factoid-card-enter" style={{
-          backgroundColor: "var(--card-elevated)",
+          backgroundColor: "var(--card)",
           border: "1px solid var(--border)",
-          boxShadow: "0 6px 16px rgba(0,0,0,0.4)",
+          borderRadius: 4,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+          padding: 22,
         }}>
-          <div style={{ height: 3, backgroundColor: "var(--powder-blue)", flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
+            <span className="pill pill-bourbon font-mono">{getCategoryLabel(factoid.category)}</span>
+            <span className="pill pill-dark font-mono">{shortYear(factoid.year)}</span>
+            <span className="pill pill-blue-soft font-mono">◆ {factoid.location}</span>
+          </div>
 
-          <div style={{ padding: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <span className="font-mono" style={{ fontSize: 10, letterSpacing: 3, color: "var(--powder-blue)" }}>
-                {getCategoryLabel(factoid.category)}
-              </span>
-              <div style={{ width: 4, height: 4, backgroundColor: "var(--smoke)", flexShrink: 0 }} />
-              <span className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)" }}>
-                {factoid.year}
-              </span>
-            </div>
-
-            <div style={{ marginBottom: 4 }}>
-              <span className="font-mono" style={{ fontSize: 12, color: "var(--cream-muted)", letterSpacing: 1 }}>
-                ◆ {factoid.location}
-              </span>
-            </div>
-
-            <div style={{ height: 1, backgroundColor: "var(--border)", marginTop: 12, marginBottom: 12 }} />
-
-            <div style={{ marginBottom: 4 }}>
-              <span className="font-serif" style={{
-                fontSize: 52,
-                lineHeight: "50px",
+          <div style={{ marginBottom: 22 }}>
+            <span
+              className="font-display"
+              style={{
+                fontSize: 56,
+                lineHeight: 0.85,
                 color: "var(--bourbon)",
-                marginRight: 6,
-                marginTop: -2,
+                fontStyle: "italic",
+                fontWeight: 800,
+                marginRight: 8,
+                marginTop: 4,
                 float: "left",
-              }}>
-                {factoid.factoid.charAt(0)}
-              </span>
-              <span className="font-serif" style={{
-                fontSize: 18,
-                lineHeight: "30px",
-                color: "var(--cream)",
-                display: "block",
-              }}>
-                {factoid.factoid.slice(1)}
-              </span>
-              <div style={{ clear: "both" }} />
-            </div>
+                fontVariationSettings: "'SOFT' 50",
+              }}
+            >
+              {factoid.factoid.charAt(0)}
+            </span>
+            <span className="font-serif" style={{
+              fontSize: 17,
+              lineHeight: 1.7,
+              color: "var(--warm-black)",
+              display: "block",
+            }}>
+              {factoid.factoid.slice(1)}
+            </span>
+            <div style={{ clear: "both" }} />
+          </div>
 
-            <div style={{ marginTop: 16 }}>
-              <div style={{ height: 2, backgroundColor: "var(--border)" }} />
-              <div style={{ height: 3 }} />
-              <div style={{ height: 1, backgroundColor: "var(--border-subtle)" }} />
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginBottom: 18 }}>
+            <div className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)", marginBottom: 6, textTransform: "uppercase" }}>
+              → say this out loud
             </div>
+            <div className="font-serif" style={{ fontSize: 15, color: "var(--warm-black)", lineHeight: 1.6, fontStyle: "italic" }}>
+              {CONVERSATION_OPENERS[factoid.category] ?? "\u201cThe history here is, frankly, more interesting than most people.\u201d"}
+            </div>
+          </div>
 
-            <div style={{ paddingTop: 14 }}>
-              <div className="font-mono" style={{ fontSize: 10, letterSpacing: 3, color: "var(--bourbon)", marginBottom: 6 }}>YOUR MOVE</div>
-              <div className="font-serif" style={{ fontSize: 14, color: "var(--smoke)", lineHeight: "22px", fontStyle: "italic" }}>
-                {CONVERSATION_OPENERS[factoid.category] ?? "\u201cThe history here is, frankly, more interesting than most people.\u201d"}
-              </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button onClick={onAgain} className="btn-outlined">↺ again</button>
+            <button
+              onClick={() => setKept(true)}
+              className="btn-bourbon"
+              style={{ opacity: kept ? 0.85 : 1 }}
+            >
+              {kept ? "★ kept" : "★ keep it"}
+            </button>
+            <div style={{ flex: 1 }} />
+            <button onClick={handleShare} className="btn-icon" title="share" aria-label="share">
+              ↗
+            </button>
+          </div>
+
+          {shareStatus === "copied" && (
+            <div className="font-mono" style={{ fontSize: 10, letterSpacing: 1.5, color: "var(--bourbon)", marginTop: 10, textAlign: "right" }}>
+              copied to clipboard
             </div>
+          )}
+
+          <div style={{ borderTop: "1px solid var(--border-subtle)", marginTop: 18, paddingTop: 12, textAlign: "center" }}>
+            <span className="font-mono" style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--smoke-muted)" }}>
+              Kapit™ · no cap · source: your phone
+            </span>
           </div>
         </div>
       )}
-
-      <div style={{ marginTop: 16 }}>
-        <div style={{ height: 2, backgroundColor: "var(--border)" }} />
-        <div style={{ height: 3 }} />
-        <div style={{ height: 1, backgroundColor: "var(--border)", opacity: 0.4 }} />
-      </div>
     </div>
   );
 }

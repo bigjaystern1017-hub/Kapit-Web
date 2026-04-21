@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import type { Factoid } from "@/context/KapitContext";
 import { getCategoryLabel } from "./FactoidCard";
 
@@ -6,55 +6,59 @@ interface Props {
   repertoire: Factoid[];
 }
 
-export default function Repertoire({ repertoire }: Props) {
-  const [expanded, setExpanded] = useState(false);
+function shortYear(year: string): string {
+  const match = year.match(/(\d{4})/);
+  if (match) return "'" + match[1].slice(-2);
+  const m2 = year.match(/(\d{2})$/);
+  return m2 ? "'" + m2[1] : year;
+}
 
+export default function Repertoire({ repertoire }: Props) {
   if (repertoire.length === 0) return null;
 
-  const visible = expanded ? repertoire : repertoire.slice(0, 3);
-
   return (
-    <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 32, marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 1, backgroundColor: "var(--border)" }} />
-        <span className="font-mono" style={{ fontSize: 11, letterSpacing: 3, color: "var(--smoke)" }}>YOUR REPERTOIRE</span>
-        <div style={{ flex: 1, height: 1, backgroundColor: "var(--border)" }} />
+    <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 36 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 14 }}>
+        <h3 className="font-display" style={{ fontSize: 24, fontWeight: 800, color: "var(--warm-black)", lineHeight: 1, letterSpacing: "-0.01em" }}>
+          your bits
+        </h3>
+        <span className="font-mono" style={{ fontSize: 11, letterSpacing: 1.5, color: "var(--smoke)" }}>
+          {repertoire.length} in the chamber
+        </span>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {visible.map((f) => (
+      <div className="repertoire-scroll" style={{ paddingLeft: 0, paddingRight: 0 }}>
+        {repertoire.map((f) => (
           <div key={f.id} style={{
+            flex: "0 0 260px",
             border: "1px solid var(--border)",
             backgroundColor: "var(--card)",
-            padding: "12px 14px",
-            borderLeft: "3px solid var(--bourbon)",
+            borderRadius: 4,
+            padding: 14,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span className="font-mono" style={{ fontSize: 9, letterSpacing: 2, color: "var(--powder-blue)" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <span className="pill pill-bourbon font-mono" style={{ fontSize: 9 }}>
                 {getCategoryLabel(f.category)}
               </span>
-              <div style={{ width: 3, height: 3, backgroundColor: "var(--smoke)" }} />
-              <span className="font-mono" style={{ fontSize: 9, letterSpacing: 1, color: "var(--smoke)" }}>{f.year}</span>
-              <div style={{ flex: 1 }} />
-              <span className="font-mono" style={{ fontSize: 9, letterSpacing: 1, color: "var(--smoke-muted)" }}>◆ {f.location}</span>
+              <span className="pill pill-dark font-mono" style={{ fontSize: 9 }}>
+                {shortYear(f.year)}
+              </span>
             </div>
-            <span className="font-serif" style={{ fontSize: 14, lineHeight: "22px", color: "var(--cream-muted)" }}>
-              {f.factoid.length > 120 ? f.factoid.slice(0, 120) + "…" : f.factoid}
-            </span>
+
+            <div className="font-serif" style={{ fontSize: 14, lineHeight: 1.5, color: "var(--warm-black)" }}>
+              {f.factoid.length > 110 ? f.factoid.slice(0, 110) + "…" : f.factoid}
+            </div>
+
+            <div className="font-mono" style={{ fontSize: 9, letterSpacing: 1, color: "var(--smoke)", marginTop: "auto" }}>
+              ◆ {f.location}
+            </div>
           </div>
         ))}
       </div>
-
-      {repertoire.length > 3 && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          style={{ display: "block", width: "100%", background: "none", border: "none", cursor: "pointer", marginTop: 12, textAlign: "center" }}
-        >
-          <span className="font-mono" style={{ fontSize: 10, letterSpacing: 3, color: "var(--smoke)", textDecoration: "underline" }}>
-            {expanded ? "— SHOW LESS —" : `— ${repertoire.length - 3} MORE IN YOUR REPERTOIRE —`}
-          </span>
-        </button>
-      )}
     </div>
   );
 }

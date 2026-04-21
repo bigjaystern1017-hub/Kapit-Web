@@ -1,0 +1,125 @@
+# Prompt #14 — Hybrid Redesign: Direction C Energy + Existing Mechanics
+
+"This is a major visual redesign of the Kapit app. We're keeping ALL existing functionality — the suspender snap mechanic, the API route, the spinning wheel, the factoid reveal, the repertoire — but completely reskinning the UI based on new design direction.
+
+The new look is inspired by 'Direction C: Street' from our design explorations — jaunty, cosmopolitan, confident, works for both men and women. Think speakeasy signage meets modern streetwear. Less stuffy steakhouse, more downtown cocktail bar with great typography.
+
+## CRITICAL: What NOT to change
+- Do NOT touch the suspender snap drag/release mechanics or physics
+- Do NOT touch the API route or fact generation
+- Do NOT touch the spinning wheel teaser logic or timing
+- Do NOT touch the sound effects implementation
+- Do NOT change any business logic or state management
+- Keep the circular buckle shape — do NOT make it square
+
+## COLOR PALETTE — Light/Cream Mode (Default)
+Switch the app from dark mode to a warm cream/paper background:
+- Page background: #F5EDE0 (warm cream/paper)
+- Card backgrounds: #FFFFFF with subtle shadow
+- Primary text: #1C1916 (warm black)
+- Secondary text: #5A5347 (smoke)
+- Accent 1 — Bourbon: #C4793A (headlines, buckle, straps)
+- Accent 2 — Powder Blue: #6A9CB7 (tags, secondary accents)
+- Accent 3 — Deep Black: #1C1916 (contrast elements, badges)
+- Buckle/hardware: Keep the brass/gold (#B8A44C, #D4A937)
+- Suspender straps: Keep bourbon/leather (#C4793A, #2A1408)
+
+## TYPOGRAPHY
+This is the most important change. Import these Google Fonts:
+- Fraunces (italic, variable weight) — for the 'Kapit' wordmark. Use ital, weight 800-900, with the SOFT axis if available
+- Libre Caslon Text (italic) — for body text, taglines, factoid text
+- JetBrains Mono — for small labels, metadata, coordinates, category tags
+
+Add this to the HTML head:
+<link href='https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap' rel='stylesheet'>
+
+## MASTHEAD — Direction C Style
+Replace the current masthead completely:
+
+1. At the very top: a small scrolling marquee ticker that says 'BE INSUFFERABLE ★ BE INSUFFERABLE ★' repeating, in JetBrains Mono, 10px, uppercase, letter-spacing 2px, background #1C1916, color #F5EDE0. Use CSS animation to scroll it horizontally. This should be subtle and narrow — maybe 24px tall.
+
+2. Below that: two small pill/chip badges side by side:
+   - '◆ gentleman's companion' in a dark outlined pill
+   - '· v1.0' in a powder blue filled pill
+   Both in JetBrains Mono, 10px
+
+3. The wordmark 'Kapit' in Fraunces italic at roughly 72-80px, color bourbon (#C4793A), with a slight rotation/slant (-2 to -3 degrees) on the whole word. It should feel hand-painted, like a speakeasy sign. Add a small ™ superscript after it.
+
+4. Below the wordmark: the tagline 'Be insufferable, everywhere.' on a small card/badge that's slightly rotated (2-3 degrees the opposite direction), like a sign pinned at an angle. Dark background (#1C1916), cream text, padding 8px 16px. This angled card is a key brand element.
+
+5. Below that: 'drop a fact · no cap' in JetBrains Mono, 11px, color smoke, letter-spacing 2px
+
+## LOCATION SELECTOR
+Redesign the location section:
+- A pulsing dot (bourbon colored) next to 'you are at' in small JetBrains Mono
+- The location name large and bold in Libre Caslon Text, 28px
+- Coordinates and accuracy in JetBrains Mono, 11px, smoke colored
+- A fun location tag like '↗ exploring' in a small colored chip
+- A 'swap →' button for changing locations, minimal style
+- Keep the GPS 'Find Me' button but style it as a clean outlined button
+
+## THE SNAP SECTION
+- Section header: 'PULL' in Fraunces bold at 48px, color warm black
+- Subtitle: 'the cord. that's it. that's the app.' in Libre Caslon Text italic, 14px
+- A row of arrow indicators: '↓ ↓ ↓ PULL ↓ ↓ ↓' in JetBrains Mono above the snap area
+
+- KEEP the existing circular buckle design — brass circle with inner ring
+- KEEP the existing SVG curved suspender straps with stitch detail
+- KEEP the existing drag physics, threshold, feedback text
+- KEEP the snap-back animation and sound triggers
+
+- Update the feedback text to use JetBrains Mono
+- Update the idle hint to match the new voice
+
+- Below the snap: show '3/3 free pulls today' with a 'go unlimited →' link
+  Style the count (3/3) large in Fraunces, the text in JetBrains Mono
+
+## THE FACTOID CARD — Editorial Feel Inside C's Frame
+When a fact is revealed, show it in a card that blends A's editorial interior with C's exterior energy:
+
+- Card has a white/cream background with subtle shadow and 1px border
+- Top of card: category and year as small 'sticker' badges — rounded pills with background colors:
+  - Category in a bourbon-background pill with cream text
+  - Year in a dark pill showing just the last two digits with an apostrophe (e.g., '69)
+  - Distance in a powder-blue pill
+  All in JetBrains Mono, 10px, uppercase
+
+- The factoid headline/text: 
+  - Drop cap on the first letter in Fraunces italic, 52px, bourbon color
+  - Body text in Libre Caslon Text, 17px, line-height 1.7, warm black
+  
+- The conversation prompt section:
+  - Label: '→ say this out loud' in JetBrains Mono, 10px, uppercase
+  - Prompt text in Libre Caslon Text italic, 15px, in quotes
+
+- Action buttons at the bottom:
+  - '↺ again' — outlined button
+  - '★ keep it' — filled bourbon button
+  - A small share icon button (↗)
+  All buttons in JetBrains Mono, 11px, uppercase
+
+- Small footer text: 'Kapit™ · no cap · source: your phone' in JetBrains Mono, 9px, smoke
+
+## REPERTOIRE SECTION
+- Header: 'your bits' in Fraunces bold, 24px + '7 in the chamber' in JetBrains Mono, 11px
+- Show saved facts as horizontally scrollable cards (overflow-x: auto)
+- Each card shows: category chip, truncated headline in Libre Caslon Text, year and location in JetBrains Mono
+- Cards should have slight shadow and cream background
+
+## KAPIT BLACK TEASER (at the bottom)
+- Dark card (#1C1916) with:
+  - 'KAPIT / BLACK' in JetBrains Mono, tracked
+  - 'after dark. unexpurgated. the ones your HR department will flag. $9.99. your call.' in Libre Caslon Text italic
+  - 'flip to black →' button
+
+## FOOTER
+- 'Kapit™ · 2026 · do not use in elevators' in JetBrains Mono, 9px, centered, smoke colored
+
+## GENERAL STYLING NOTES
+- Everything should feel lighter, airier, more cosmopolitan than the current dark version
+- Generous whitespace — don't crowd elements
+- Cards and sections should have subtle shadows (0 2px 8px rgba(0,0,0,0.06))
+- Rounded corners on pills/badges (border-radius: 999px) but sharp corners on main cards (border-radius: 2-4px)
+- The overall vibe is: downtown cocktail bar with great signage, not a private members club
+- It should appeal equally to men and women
+- The jaunty/tilted elements (wordmark, tagline badge) should be subtle — 2-3 degrees max, not dramatic"

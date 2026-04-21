@@ -20,6 +20,7 @@ export default function LocationSelector({ onLocationSelected }: Props) {
   const { selectedLocation, setSelectedLocation } = useKapit();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
   const [customLat, setCustomLat] = useState("");
   const [customLng, setCustomLng] = useState("");
   const [customName, setCustomName] = useState("");
@@ -36,6 +37,7 @@ export default function LocationSelector({ onLocationSelected }: Props) {
         setSelectedLocation(loc);
         onLocationSelected();
         setGpsLoading(false);
+        setShowSwap(false);
       },
       () => {
         setGpsLoading(false);
@@ -46,6 +48,7 @@ export default function LocationSelector({ onLocationSelected }: Props) {
   const selectPreset = (loc: Location) => {
     setSelectedLocation(loc);
     onLocationSelected();
+    setShowSwap(false);
   };
 
   const submitCustom = () => {
@@ -54,128 +57,150 @@ export default function LocationSelector({ onLocationSelected }: Props) {
     if (isNaN(lat) || isNaN(lng) || !customName.trim()) return;
     setSelectedLocation({ lat, lng, name: customName.trim() });
     setShowCustom(false);
+    setShowSwap(false);
     onLocationSelected();
   };
 
-  return (
-    <div style={{ paddingLeft: 20, paddingRight: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 1, backgroundColor: "var(--border)" }} />
-        <span className="font-mono" style={{ fontSize: 11, letterSpacing: 3, color: "var(--smoke)" }}>LOCALE</span>
-        <div style={{ flex: 1, height: 1, backgroundColor: "var(--border)" }} />
-      </div>
-
-      <button
-        onClick={handleGPS}
-        disabled={gpsLoading}
-        style={{
-          width: "100%",
-          backgroundColor: "var(--bourbon)",
-          color: "var(--warm-black)",
-          paddingTop: 14,
-          paddingBottom: 14,
-          border: "none",
-          cursor: "pointer",
-          marginBottom: 12,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {gpsLoading ? (
-          <span className="font-mono" style={{ fontSize: 12, letterSpacing: 4, fontWeight: "bold" }}>LOCATING…</span>
-        ) : (
-          <span className="font-mono" style={{ fontSize: 12, letterSpacing: 4, fontWeight: "bold" }}>FIND ME</span>
-        )}
-      </button>
-
-      {selectedLocation && (
+  if (selectedLocation && !showSwap) {
+    return (
+      <div style={{ paddingLeft: 20, paddingRight: 20, marginBottom: 8 }}>
         <div style={{
-          border: "1px solid var(--powder-blue)",
-          paddingLeft: 14, paddingRight: 14, paddingTop: 10, paddingBottom: 10,
-          marginBottom: 16,
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          padding: 18,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}>
-          <div className="font-mono" style={{ fontSize: 9, letterSpacing: 3, color: "var(--powder-blue)", marginBottom: 4 }}>CURRENT LOCALE</div>
-          <div className="font-mono" style={{ fontSize: 14, color: "var(--cream)", letterSpacing: 1 }}>◆ {selectedLocation.name}</div>
-        </div>
-      )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <div className="location-dot-pulse" style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "var(--bourbon)" }} />
+            <span className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)", textTransform: "uppercase" }}>
+              you are at
+            </span>
+          </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ height: 1, backgroundColor: "var(--border)" }} />
-        <div style={{ height: 1, backgroundColor: "var(--border)", marginTop: 2 }} />
-      </div>
+          <div className="font-serif" style={{ fontSize: 28, fontWeight: 700, color: "var(--warm-black)", lineHeight: 1.15, marginBottom: 8 }}>
+            {selectedLocation.name}
+          </div>
 
-      <div className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)", textAlign: "center", marginBottom: 12 }}>
-        — OR SELECT A DESTINATION —
-      </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+            <span className="font-mono" style={{ fontSize: 11, color: "var(--smoke)", letterSpacing: 0.5 }}>
+              {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
+            </span>
+            <span className="pill pill-blue-soft font-mono">↗ exploring</span>
+          </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-        {PRESET_LOCATIONS.map((loc) => (
           <button
-            key={loc.name}
-            onClick={() => selectPreset(loc)}
+            onClick={() => setShowSwap(true)}
             style={{
-              border: `1px solid ${selectedLocation?.name === loc.name ? "var(--bourbon)" : "var(--border)"}`,
-              backgroundColor: selectedLocation?.name === loc.name ? "rgba(196,121,58,0.13)" : "transparent",
-              paddingTop: 8, paddingBottom: 8, paddingLeft: 10, paddingRight: 10,
+              background: "transparent",
+              border: "none",
               cursor: "pointer",
+              padding: 0,
+              color: "var(--bourbon)",
             }}
+            className="font-mono"
           >
-            <span className="font-mono" style={{
-              fontSize: 9, letterSpacing: 2,
-              color: selectedLocation?.name === loc.name ? "var(--bourbon)" : "var(--smoke)",
-            }}>
-              {loc.name.toUpperCase()}
+            <span style={{ fontSize: 11, letterSpacing: 1.5, borderBottom: "1px solid var(--bourbon)", paddingBottom: 1 }}>
+              swap →
             </span>
           </button>
-        ))}
-      </div>
-
-      <button
-        onClick={() => setShowCustom(!showCustom)}
-        style={{ display: "block", width: "100%", background: "none", border: "none", cursor: "pointer", paddingTop: 10, paddingBottom: 10, marginBottom: 8, textAlign: "center" }}
-      >
-        <span className="font-mono" style={{ fontSize: 10, letterSpacing: 3, color: "var(--smoke)", textDecoration: "underline" }}>
-          {showCustom ? "— CLOSE —" : "ENTER COORDINATES"}
-        </span>
-      </button>
-
-      {showCustom && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
-          {[
-            { value: customLat, setter: setCustomLat, placeholder: "LATITUDE (e.g. 40.758)" },
-            { value: customLng, setter: setCustomLng, placeholder: "LONGITUDE (e.g. -73.985)" },
-            { value: customName, setter: setCustomName, placeholder: "LOCATION NAME" },
-          ].map(({ value, setter, placeholder }) => (
-            <input
-              key={placeholder}
-              value={value}
-              onChange={(e) => setter(e.target.value)}
-              placeholder={placeholder}
-              className="font-mono"
-              style={{
-                border: "1px solid var(--border)",
-                background: "transparent",
-                color: "var(--cream)",
-                paddingTop: 10, paddingBottom: 10, paddingLeft: 14, paddingRight: 14,
-                fontSize: 12,
-                outline: "none",
-              }}
-            />
-          ))}
-          <button
-            onClick={submitCustom}
-            style={{
-              backgroundColor: "var(--bourbon)",
-              color: "var(--warm-black)",
-              paddingTop: 14, paddingBottom: 14,
-              border: "none", cursor: "pointer",
-            }}
-          >
-            <span className="font-mono" style={{ fontSize: 12, letterSpacing: 4, fontWeight: "bold" }}>SET LOCATION</span>
-          </button>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ paddingLeft: 20, paddingRight: 20, marginBottom: 8 }}>
+      <div style={{
+        backgroundColor: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 4,
+        padding: 18,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <span className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)", textTransform: "uppercase" }}>
+            where are you
+          </span>
+          {selectedLocation && (
+            <button
+              onClick={() => setShowSwap(false)}
+              className="font-mono"
+              style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--smoke)", fontSize: 10, letterSpacing: 1.5 }}
+            >
+              ← back
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={handleGPS}
+          disabled={gpsLoading}
+          className="btn-outlined"
+          style={{ width: "100%", marginBottom: 14, padding: "12px 16px" }}
+        >
+          {gpsLoading ? "LOCATING…" : "◉ FIND ME"}
+        </button>
+
+        <div className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke-muted)", textAlign: "center", marginBottom: 12, textTransform: "uppercase" }}>
+          or pick a spot
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+          {PRESET_LOCATIONS.map((loc) => {
+            const active = selectedLocation?.name === loc.name;
+            return (
+              <button
+                key={loc.name}
+                onClick={() => selectPreset(loc)}
+                className={`pill font-mono ${active ? "pill-bourbon" : "pill-outlined"}`}
+                style={{ cursor: "pointer", border: active ? "1px solid var(--bourbon)" : undefined }}
+              >
+                {loc.name}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => setShowCustom(!showCustom)}
+          style={{ display: "block", width: "100%", background: "none", border: "none", cursor: "pointer", padding: "8px 0", textAlign: "center" }}
+        >
+          <span className="font-mono" style={{ fontSize: 10, letterSpacing: 2, color: "var(--smoke)", textDecoration: "underline" }}>
+            {showCustom ? "— close —" : "enter coordinates"}
+          </span>
+        </button>
+
+        {showCustom && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {[
+              { value: customLat, setter: setCustomLat, placeholder: "latitude (e.g. 40.758)" },
+              { value: customLng, setter: setCustomLng, placeholder: "longitude (e.g. -73.985)" },
+              { value: customName, setter: setCustomName, placeholder: "location name" },
+            ].map(({ value, setter, placeholder }) => (
+              <input
+                key={placeholder}
+                value={value}
+                onChange={(e) => setter(e.target.value)}
+                placeholder={placeholder}
+                className="font-mono"
+                style={{
+                  border: "1px solid var(--border)",
+                  background: "var(--cream-warm)",
+                  color: "var(--warm-black)",
+                  padding: "10px 14px",
+                  fontSize: 12,
+                  outline: "none",
+                  borderRadius: 4,
+                }}
+              />
+            ))}
+            <button onClick={submitCustom} className="btn-bourbon" style={{ padding: "12px 16px" }}>
+              SET LOCATION
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
