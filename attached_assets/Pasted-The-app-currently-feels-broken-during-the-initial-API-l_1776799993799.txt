@@ -1,0 +1,30 @@
+The app currently feels broken during the initial API load after selecting a location — the suspender doesn't respond and there's no visual feedback. Fix this by adding a beautiful loading state that appears between location selection and the snap becoming active.
+IMPORTANT: Do NOT disable or hide the suspender during loading. Instead, show the loading animation IN the space between the location card and the snap section.
+THE LOADING MECHANISM — a winding watch/clockwork animation:
+
+Show a small circular element (about 60px) styled like a watch face or gear. Use CSS animation to slowly rotate it (one full rotation every 3 seconds). Give it a bourbon-colored border, a cream center, and small tick marks around the edge like a chronograph. Keep it simple — CSS only, no images.
+Below the gear, show cycling status messages that change every 1.5 seconds. These should be playful and in-brand, rotating through:
+
+'ambulating...'
+'percolating...'
+'kapitulating locale...'
+'consulting the archives...'
+'winding the mainspring...'
+'engaging the apparatus...'
+'calibrating charisma...'
+'buffing the brass...'
+'polishing your repertoire...'
+'locating something insufferable...'
+
+Style these in Libre Caslon Text italic, 13px, bourbon color. Each message should fade in and out smoothly (opacity transition over 0.3 seconds).
+Below the messages, show a subtle progress indicator — not a standard progress bar but a series of small dots (5-6 dots) that fill in sequentially from left to right in bourbon color, cycling back to empty and refilling. Like the ticking of a watch mechanism.
+
+THE FLOW:
+
+User selects location → loading mechanism appears → API call starts in background
+While loading: the gear rotates, messages cycle, dots tick
+When API response arrives: the loading mechanism fades out, the snap section fades in with the suspender ready to pull
+The transition from loading to ready should feel like the machine has finished winding and is now armed
+
+ALSO: When the snap IS ready, flash a brief message that says 'mechanism engaged' or 'apparatus ready' in JetBrains Mono, 10px, that fades out after 1.5 seconds. This confirms the app is loaded and the suspender is live.
+Style the whole loading section with generous whitespace — it should feel calm and intentional, like watching a watchmaker work, not anxious like a spinning wheel on a broken website.

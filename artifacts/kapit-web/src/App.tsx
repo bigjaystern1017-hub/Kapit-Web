@@ -18,6 +18,9 @@ function HomeScreen() {
     repertoire,
     triggerSnap,
     isWildcard,
+    loadingReady,
+    loadingMessage,
+    loadingTick,
   } = useKapit();
 
   const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
@@ -25,11 +28,15 @@ function HomeScreen() {
   const [snapActive, setSnapActive] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
+  const [showReadyFlash, setShowReadyFlash] = useState(false);
+  const [showLoading, setShowLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleLocationSelected = () => {
     setLocationSelected(true);
     setPhase("idle");
+    setShowReadyFlash(false);
+    setShowLoading(true);
   };
 
   const handleSnap = useCallback(() => {
@@ -51,6 +58,19 @@ function HomeScreen() {
   }, [triggerSnap]);
 
   const currentFactoid = getCurrentFactoid();
+  const loadingMessages = [
+    "ambulating...",
+    "percolating...",
+    "kapitulating locale...",
+    "consulting the archives...",
+    "winding the mainspring...",
+    "engaging the apparatus...",
+    "calibrating charisma...",
+    "buffing the brass...",
+    "polishing your repertoire...",
+    "locating something insufferable...",
+  ];
+  const loadingMessageIndex = loadingTick % loadingMessages.length;
 
   return (
     <div style={{ height: "100vh", backgroundColor: "var(--cream)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -138,6 +158,37 @@ function HomeScreen() {
               </div>
             </div>
 
+            {showLoading && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, paddingTop: 24, paddingBottom: 22 }}>
+                <div className="loading-gear">
+                  <div className="loading-gear-inner" />
+                  <div className="loading-tick loading-tick-1" />
+                  <div className="loading-tick loading-tick-2" />
+                  <div className="loading-tick loading-tick-3" />
+                  <div className="loading-tick loading-tick-4" />
+                  <div className="loading-tick loading-tick-5" />
+                  <div className="loading-tick loading-tick-6" />
+                  <div className="loading-tick loading-tick-7" />
+                  <div className="loading-tick loading-tick-8" />
+                </div>
+                <div
+                  key={loadingMessageIndex}
+                  className="font-serif loading-message"
+                  style={{ fontStyle: "italic", fontSize: 13, color: "var(--bourbon)", textAlign: "center" }}
+                >
+                  {loadingMessages[loadingMessageIndex]}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <span
+                      key={index}
+                      className={`loading-dot ${index <= (loadingTick % 6) ? "loading-dot-active" : ""}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {error && (
               <div style={{ border: "1px solid var(--destructive)", padding: 16, marginTop: 16, marginBottom: 16, borderRadius: 4, backgroundColor: "#FCE8E8" }}>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--destructive)", textAlign: "center", marginBottom: 10 }}>{error}</div>
@@ -150,7 +201,15 @@ function HomeScreen() {
               </div>
             )}
 
-            {!error && (
+            {!error && !showLoading && (
+              <div style={{ display: (showReadyFlash || loadingReady) ? "flex" : "none", justifyContent: "center", marginBottom: 10 }}>
+                <span className="font-mono loading-ready-flash" style={{ fontSize: 10, letterSpacing: 2, color: "var(--bourbon)" }}>
+                  {loadingMessage}
+                </span>
+              </div>
+            )}
+
+            {!error && !showLoading && (
               <SuspenderSnap
                 onSnap={handleSnap}
                 onDragStart={() => setSnapActive(true)}

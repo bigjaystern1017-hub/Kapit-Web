@@ -29,6 +29,9 @@ interface KapitContextType {
   clearFactoids: () => void;
   triggerSnap: () => Promise<void>;
   isWildcard: boolean;
+  loadingReady: boolean;
+  loadingMessage: string;
+  loadingTick: number;
 }
 
 const KapitContext = createContext<KapitContextType | null>(null);
@@ -47,6 +50,9 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const [snapCount, setSnapCount] = useState(0);
   const [wildcardFactoid, setWildcardFactoid] = useState<Factoid | null>(null);
   const [isWildcard, setIsWildcard] = useState(false);
+  const [loadingReady, setLoadingReady] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("ambulating...");
+  const [loadingTick, setLoadingTick] = useState(0);
 
   const selectedLocationRef = useRef<Location | null>(null);
   selectedLocationRef.current = selectedLocation;
@@ -71,6 +77,9 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       setWildcardFactoid(null);
       setIsWildcard(false);
+      setLoadingReady(false);
+      setLoadingMessage("ambulating...");
+      setLoadingTick(0);
       void fetchFactoidsRef.current?.();
     }
   }, []);
@@ -103,6 +112,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     const loc = selectedLocationRef.current;
     if (!loc) return;
     if (isLoadingRef.current) return;
+    setLoadingReady(false);
     setIsLoading(true);
     isLoadingRef.current = true;
     setError(null);
@@ -138,6 +148,8 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       setFactoids(mapped);
       factoidsRef.current = mapped;
       setCurrentFactoidIndex(0);
+      setLoadingReady(true);
+      setLoadingMessage("apparatus ready");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -149,6 +161,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
   const fetchWildcard = useCallback(async () => {
     setIsLoading(true);
+    setLoadingReady(false);
     setError(null);
     try {
       const apiBase = BASE_URL.replace(/\/$/, "").replace("/kapit-web", "");
@@ -166,6 +179,8 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         id: `wild-${Date.now()}`,
       };
       setWildcardFactoid(wc);
+      setLoadingReady(true);
+      setLoadingMessage("mechanism engaged");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setIsWildcard(false);
@@ -177,6 +192,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const triggerSnap = useCallback(async () => {
     const next = snapCount + 1;
     setSnapCount(next);
+    setLoadingTick((t) => t + 1);
     const isFourth = next % 4 === 0;
     if (isFourth) {
       setWildcardFactoid(null);
@@ -220,6 +236,9 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         clearFactoids,
         triggerSnap,
         isWildcard,
+        loadingReady,
+        loadingMessage,
+        loadingTick,
       }}
     >
       {children}
