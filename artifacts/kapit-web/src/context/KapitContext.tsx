@@ -118,17 +118,18 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const apiBase = BASE_URL.replace(/\/$/, "").replace("/kapit-web", "");
-      const response = await fetch(`${apiBase}/api/kapit/factoids`, {
+      const url = `${apiBase}/api/kapit/factoids`;
+      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name };
+      console.log("[kapit] fetchFactoids POST", url, body);
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lat: loc.lat,
-          lng: loc.lng,
-          locationName: loc.name,
-        }),
+        body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error("Failed to fetch factoids");
+      console.log("[kapit] fetchFactoids response", response.status, response.ok);
+      if (!response.ok) throw new Error(`Failed to fetch factoids (${response.status})`);
       const data = await response.json();
+      console.log("[kapit] fetchFactoids data", { count: data?.factoids?.length, cached: data?.cached });
       const current = selectedLocationRef.current;
       if (
         !current ||

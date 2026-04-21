@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import LocationSelector from "@/components/LocationSelector";
 import SuspenderSnap from "@/components/SuspenderSnap";
 import FactoidCard from "@/components/FactoidCard";
@@ -30,14 +30,43 @@ function HomeScreen() {
   const [inviteCode, setInviteCode] = useState("");
   const [showReadyFlash, setShowReadyFlash] = useState(false);
   const [showLoading, setShowLoading] = useState(false);
+  const [slowLoad, setSlowLoad] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleLocationSelected = () => {
     setLocationSelected(true);
     setPhase("idle");
     setShowReadyFlash(false);
-    setShowLoading(true);
   };
+
+  useEffect(() => {
+    if (isLoading) {
+      setShowLoading(true);
+      setSlowLoad(false);
+      const slowTimer = window.setTimeout(() => setSlowLoad(true), 8000);
+      const giveupTimer = window.setTimeout(() => {
+        console.log("[kapit] loading timeout reached, hiding loader");
+        setShowLoading(false);
+      }, 12000);
+      return () => {
+        window.clearTimeout(slowTimer);
+        window.clearTimeout(giveupTimer);
+      };
+    }
+    if (!showLoading) return;
+    if (error) {
+      setShowLoading(false);
+      setSlowLoad(false);
+      return;
+    }
+    setShowReadyFlash(true);
+    const hideTimer = window.setTimeout(() => {
+      setShowLoading(false);
+      setShowReadyFlash(false);
+      setSlowLoad(false);
+    }, 700);
+    return () => window.clearTimeout(hideTimer);
+  }, [isLoading, error, showLoading]);
 
   const handleSnap = useCallback(() => {
     if (!selectedLocation) return;
@@ -186,35 +215,42 @@ function HomeScreen() {
                     />
                   ))}
                 </div>
+                {slowLoad && (
+                  <div className="font-mono" style={{ fontSize: 10, letterSpacing: 1.5, color: "var(--smoke)", marginTop: 4 }}>
+                    taking longer than usual...
+                  </div>
+                )}
               </div>
             )}
 
-            {error && (
-              <div style={{ border: "1px solid var(--destructive)", padding: 16, marginTop: 16, marginBottom: 16, borderRadius: 4, backgroundColor: "#FCE8E8" }}>
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--destructive)", textAlign: "center", marginBottom: 10 }}>{error}</div>
+            {error && !showLoading && (
+              <div style={{ border: "1px solid var(--bourbon)", padding: 14, marginTop: 12, marginBottom: 12, borderRadius: 4, backgroundColor: "rgba(196,121,58,0.08)" }}>
+                <div className="font-mono" style={{ fontSize: 11, letterSpacing: 1.5, color: "var(--bourbon)", textAlign: "center", marginBottom: 10 }}>
+                  archives unavailable — try again
+                </div>
                 <button
-                  onClick={() => fetchFactoids()}
-                  style={{ width: "100%", backgroundColor: "var(--destructive)", border: "none", padding: "12px 0", cursor: "pointer", borderRadius: 4 }}
+                  onClick={() => { void fetchFactoids(); }}
+                  style={{ width: "100%", background: "transparent", border: "1px solid var(--bourbon)", padding: "10px 0", cursor: "pointer", borderRadius: 4 }}
                 >
-                  <span className="font-mono" style={{ fontSize: 11, letterSpacing: 3, color: "var(--cream)" }}>TRY AGAIN</span>
+                  <span className="font-mono" style={{ fontSize: 11, letterSpacing: 3, color: "var(--bourbon)" }}>RETRY</span>
                 </button>
               </div>
             )}
 
-            {!error && !showLoading && (
-              <div style={{ display: (showReadyFlash || loadingReady) ? "flex" : "none", justifyContent: "center", marginBottom: 10 }}>
+            {!showLoading && (
+              <div style={{ display: (showReadyFlash || loadingReady) && !error ? "flex" : "none", justifyContent: "center", marginBottom: 10 }}>
                 <span className="font-mono loading-ready-flash" style={{ fontSize: 10, letterSpacing: 2, color: "var(--bourbon)" }}>
                   {loadingMessage}
                 </span>
               </div>
             )}
 
-            {!error && !showLoading && (
+            {!showLoading && (
               <SuspenderSnap
                 onSnap={handleSnap}
                 onDragStart={() => setSnapActive(true)}
                 onDragEnd={() => setSnapActive(false)}
-                disabled={isLoading || !selectedLocation}
+                disabled={!selectedLocation}
               />
             )}
 

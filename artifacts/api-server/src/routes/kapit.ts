@@ -13,14 +13,17 @@ interface Factoid {
 }
 
 router.post("/kapit/factoids", async (req, res) => {
+  const startedAt = Date.now();
   try {
     const { lat, lng, locationName } = req.body as {
       lat: number;
       lng: number;
       locationName: string;
     };
+    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName });
 
     if (lat === undefined || lng === undefined || !locationName) {
+      console.log("[kapit-api] /kapit/factoids 400 missing fields");
       res.status(400).json({ error: "lat, lng, and locationName are required" });
       return;
     }
@@ -29,9 +32,11 @@ router.post("/kapit/factoids", async (req, res) => {
     const cached = factoidCache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      console.log("[kapit-api] /kapit/factoids cache hit", cacheKey);
       res.json({ factoids: cached.factoids, cached: true });
       return;
     }
+    console.log("[kapit-api] /kapit/factoids calling Anthropic", cacheKey);
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
@@ -80,8 +85,10 @@ JSON only, no markdown, no explanation.`,
 
     factoidCache.set(cacheKey, { factoids, timestamp: Date.now() });
 
+    console.log("[kapit-api] /kapit/factoids ok", { ms: Date.now() - startedAt, count: factoids.length });
     res.json({ factoids, cached: false });
   } catch (err) {
+    console.error("[kapit-api] /kapit/factoids error", { ms: Date.now() - startedAt, err });
     req.log.error({ err }, "Error generating factoids");
     res.status(500).json({ error: "Failed to generate factoids" });
   }
