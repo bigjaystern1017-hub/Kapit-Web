@@ -139,14 +139,15 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onA
 
   const handleShare = async () => {
     if (!factoid) return;
-    const text = `${factoid.factoid} — Kapit™`;
+    const categoryLabel = getCategoryLabel(factoid.category).toLowerCase();
+    const text = `${factoid.factoid}\n— ${categoryLabel} · ${factoid.year} · ${factoid.location}\nvia Kapit · kapitapp.com`;
     try {
       if (navigator.share) {
         await navigator.share({ text, title: "Kapit" });
       } else {
         await navigator.clipboard.writeText(text);
         setShareStatus("copied");
-        setTimeout(() => setShareStatus(""), 1600);
+        setTimeout(() => setShareStatus(""), 2000);
       }
     } catch {}
   };
