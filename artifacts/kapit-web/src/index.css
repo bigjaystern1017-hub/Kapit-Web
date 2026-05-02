@@ -126,7 +126,8 @@ body {
 .dot-3 { animation: dotPulse 0.9s ease-in-out 0.6s infinite; }
 
 .marquee-bar {
-  height: 24px;
+  height: calc(24px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background-color: var(--warm-black);
   overflow: hidden;
   display: flex;

@@ -1,12 +1,13 @@
 {
-  "name": "Kapit — A Gentleman's Historical Companion",
+  "name": "Kapit",
   "short_name": "Kapit",
-  "description": "Historical factoids about your location, served with a suspender snap.",
+  "description": "Be Chronically Interesting.",
   "start_url": "/kapit-web/",
+  "scope": "/kapit-web/",
   "display": "standalone",
-  "background_color": "#1C1916",
-  "theme_color": "#1C1916",
   "orientation": "portrait",
+  "background_color": "#F5EDE0",
+  "theme_color": "#0E0B08",
   "icons": [
     {
       "src": "/kapit-web/icon-192.png",

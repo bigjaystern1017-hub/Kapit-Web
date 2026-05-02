@@ -179,7 +179,7 @@ function HomeScreen() {
           paddingLeft: 8,
           paddingRight: 8,
           paddingTop: 24,
-          paddingBottom: 60,
+          paddingBottom: "calc(60px + env(safe-area-inset-bottom, 0px))",
           WebkitOverflowScrolling: "touch" as any,
         }}
       >
