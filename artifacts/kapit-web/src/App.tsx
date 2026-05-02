@@ -85,6 +85,17 @@ function HomeScreen() {
     void triggerFreestyle();
   }, [phase, triggerFreestyle]);
 
+  // Layer 4 — keep server warm with a ping every 4 minutes
+  useEffect(() => {
+    const base = (import.meta.env.BASE_URL || "/kapit-web/").replace(/\/$/, "").replace("/kapit-web", "");
+    const ping = () => {
+      fetch(`${base}/api/healthz`, { method: "GET" }).catch(() => {});
+    };
+    ping();
+    const id = window.setInterval(ping, 4 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const tapTimesRef = useRef<number[]>([]);
   const [wordmarkGlow, setWordmarkGlow] = useState(false);
   const handleWordmarkTap = useCallback(() => {
@@ -348,6 +359,7 @@ function HomeScreen() {
             onAgain={handleAgain}
             isWildcard={isWildcard && !isFreestyle}
             isFreestyle={isFreestyle}
+            isArchiveFallback={currentFactoid?.archiveFallback === true}
           />
         )}
 

@@ -15,12 +15,13 @@ interface Factoid {
 router.post("/kapit/factoids", async (req, res) => {
   const startedAt = Date.now();
   try {
-    const { lat, lng, locationName } = req.body as {
+    const { lat, lng, locationName, count = 3 } = req.body as {
       lat: number;
       lng: number;
       locationName: string;
+      count?: number;
     };
-    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName });
+    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count });
 
     if (lat === undefined || lng === undefined || !locationName) {
       console.log("[kapit-api] /kapit/factoids 400 missing fields");
@@ -32,30 +33,31 @@ router.post("/kapit/factoids", async (req, res) => {
     const cached = factoidCache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      console.log("[kapit-api] /kapit/factoids cache hit", cacheKey);
+      console.log("[kapit-api] /kapit/factoids cache hit", cacheKey, cached.factoids.length, "facts");
       res.json({ factoids: cached.factoids, cached: true });
       return;
     }
-    console.log("[kapit-api] /kapit/factoids calling Anthropic", cacheKey);
+    console.log("[kapit-api] /kapit/factoids calling Anthropic", { cacheKey, count });
+
+    const requestedCount = Math.max(1, Math.min(count, 8));
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 8192,
+      max_tokens: 800,
       messages: [
         {
           role: "user",
-          content: `You are a brilliant, slightly insufferable cocktail party historian. Give me 5 fascinating, unexpected, conversation-worthy historical factoids about places within roughly 10 miles of these coordinates: ${lat}, ${lng} (near ${locationName}).
+          content: `You are a brilliant, slightly insufferable cocktail party historian. Give me ${requestedCount} fascinating, unexpected, conversation-worthy historical factoid${requestedCount > 1 ? "s" : ""} about places within roughly 10 miles of these coordinates: ${lat}, ${lng} (near ${locationName}).
 
 Rules:
-- Each factoid must be about a DIFFERENT topic, person, and location. Never repeat a fact you have already given. Spread the facts across different neighborhoods and areas within the radius. Mix hyperlocal facts (about this exact block) with broader area facts (within 10 miles).
+- Each factoid must be about a DIFFERENT topic, person, and location
 - Prioritize weird, surprising, scandalous, or counterintuitive facts over famous/well-known ones
 - Each factoid should be 2-3 punchy sentences — bar-conversation length
 - Never start with "Did you know"
-- Tone: casual, punchy, slightly smug — like a charming guy who knows too much
-- Make each feel like a genuine gem, not a Wikipedia summary
+- Tone: casual, punchy, slightly smug — like a charming person who knows too much
 - Include specific years, names, or numbers when possible
 
-Return ONLY valid JSON array with exactly 5 objects, each having:
+Return ONLY valid JSON array with exactly ${requestedCount} object${requestedCount > 1 ? "s" : ""}, each having:
 - "factoid": string (the 2-3 sentence fact)
 - "year": string (the approximate year or decade, e.g. "1923" or "1890s")
 - "category": string (exactly one of: crime, science, culture, politics, sports, weird, food, architecture, nature)
@@ -95,10 +97,11 @@ JSON only, no markdown, no explanation.`,
 });
 
 router.post("/kapit/wildcard", async (_req, res) => {
+  const startedAt = Date.now();
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1024,
+      max_tokens: 400,
       messages: [
         {
           role: "user",
@@ -132,8 +135,10 @@ JSON only, no markdown, no explanation.`,
       factoid = JSON.parse(jsonMatch[0]);
     }
 
+    console.log("[kapit-api] /kapit/wildcard ok", { ms: Date.now() - startedAt });
     res.json({ factoid });
   } catch (err) {
+    console.error("[kapit-api] /kapit/wildcard error", { ms: Date.now() - startedAt, err });
     req.log.error({ err }, "Error generating wildcard factoid");
     res.status(500).json({ error: "Failed to generate wildcard factoid" });
   }

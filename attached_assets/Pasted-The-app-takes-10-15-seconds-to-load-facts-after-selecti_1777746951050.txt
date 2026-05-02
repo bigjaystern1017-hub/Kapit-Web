@@ -1,0 +1,20 @@
+The app takes 10-15 seconds to load facts after selecting a location. This is unacceptable. Fix this with multiple layers:
+LAYER 1 — PRELOAD POPULAR LOCATIONS:
+Create a file called preloaded-facts.ts with pre-written facts for the 20 most likely locations a user would select. Include all the preset locations already in the app (Times Square, Brooklyn Bridge, Wall Street, Central Park, etc.) plus major landmarks in LA, Chicago, London, and Paris. Each location should have 8-10 pre-written facts. Structure them identically to API-returned facts with factoid, year, category fields.
+When the app loads, import these preloaded facts. When a user selects one of these locations, serve facts INSTANTLY from the preloaded set — zero API calls, zero loading time. Only call the API if the user is at a GPS location that doesn't match any preloaded location.
+LAYER 2 — REDUCE API RESPONSE TIME:
+Change the API prompt to request only 3 facts instead of 5 or 8. Fewer facts means a shorter response which means faster generation. We can always fetch more in the background after the first batch is served.
+Also add max_tokens: 800 to the API call to cap the response size. This prevents the model from generating overly long responses.
+LAYER 3 — STREAM THE FIRST FACT:
+Instead of waiting for ALL facts to generate before showing anything, show the FIRST fact as soon as it's available. Change the API call to use streaming (the Anthropic API supports streaming responses). As soon as enough of the response has streamed in to parse the first complete fact object from the JSON array, immediately end the loading state and serve that fact. Continue streaming the remaining facts in the background and add them to the cache as they arrive.
+If streaming is too complex to implement, alternatively make TWO separate API calls: one that requests just 1 fact (fast, ~2 seconds) and fires immediately, and a second that requests 5 more facts and fires in the background. Serve the single fact instantly, backfill the cache with the batch.
+LAYER 4 — KEEP THE SERVER WARM:
+Add a keep-alive mechanism. Create an API endpoint at /api/health that returns a simple 200 OK. Set up a client-side interval that pings this endpoint every 4 minutes to prevent the Replit server from going to sleep. Do this with a simple setInterval in the main app component that runs on mount.
+LAYER 5 — LOADING STATE TIMEOUT:
+If the API hasn't responded within 6 seconds, check if demo mode facts are available and serve one of those as a fallback while the API continues loading in the background. Show a small subtle note like 'from the archives' on the fact card to indicate it's a preloaded fact. When the API finally responds, cache those facts for the next snap.
+After all these changes, the experience should be:
+
+Preset locations: INSTANT (0 seconds, preloaded)
+GPS locations near preloaded spots: INSTANT (matched to nearest preload)
+Brand new GPS locations: 2-4 seconds max (single fact stream + background batch)
+Worst case fallback: 6 seconds then demo fact served

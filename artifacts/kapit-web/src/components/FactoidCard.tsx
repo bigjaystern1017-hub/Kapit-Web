@@ -53,9 +53,10 @@ interface Props {
   onAgain: () => void;
   isWildcard?: boolean;
   isFreestyle?: boolean;
+  isArchiveFallback?: boolean;
 }
 
-export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onAgain, isWildcard, isFreestyle }: Props) {
+export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onAgain, isWildcard, isFreestyle, isArchiveFallback }: Props) {
   const [displayText, setDisplayText] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [revealKey, setRevealKey] = useState(0);
@@ -194,6 +195,11 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onA
                 ✦ WILDCARD
               </span>
             ) : null}
+            {isArchiveFallback && (
+              <span className="pill font-mono" style={{ backgroundColor: "transparent", color: "var(--smoke)", border: "1px solid var(--border)", fontSize: 9, letterSpacing: 1.5 }}>
+                from the archives
+              </span>
+            )}
             <span className="pill pill-bourbon font-mono">{getCategoryLabel(factoid.category)}</span>
             <span className="pill pill-dark font-mono">{shortYear(factoid.year)}</span>
             <span className="pill pill-blue-soft font-mono">◆ {factoid.location}</span>

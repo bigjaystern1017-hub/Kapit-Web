@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { DEMO_FACTOIDS, DEMO_WILDCARDS, type DemoFactoid } from "@/data/demoFacts";
+import { findPreloadedLocation, type PreloadedFactoid } from "@/data/preloadedFacts";
 
 export interface Location {
   lat: number;
@@ -13,6 +14,7 @@ export interface Factoid {
   category: string;
   location: string;
   id: string;
+  archiveFallback?: boolean;
 }
 
 interface KapitContextType {
@@ -44,6 +46,11 @@ const KapitContext = createContext<KapitContextType | null>(null);
 const STORAGE_KEY = "kapit_repertoire";
 const DEMO_KEY = "kapit_demo_mode";
 const BASE_URL = import.meta.env.BASE_URL || "/kapit-web/";
+const FALLBACK_TIMEOUT_MS = 6000;
+
+function apiBase() {
+  return BASE_URL.replace(/\/$/, "").replace("/kapit-web", "");
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice();
@@ -54,11 +61,17 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+let _factoidIdSeq = 0;
+function makeId(prefix: string) {
+  return `${prefix}-${Date.now()}-${++_factoidIdSeq}`;
+}
+
+function preloadedToFactoid(f: PreloadedFactoid, locationName: string): Factoid {
+  return { ...f, location: locationName, id: makeId("pre") };
+}
+
 function demoToFactoid(f: DemoFactoid, prefix: string): Factoid {
-  return {
-    ...f,
-    id: `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  };
+  return { ...f, id: makeId(prefix) };
 }
 
 export function KapitProvider({ children }: { children: React.ReactNode }) {
@@ -78,11 +91,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const [loadingTick, setLoadingTick] = useState(0);
 
   const [demoMode, setDemoMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(DEMO_KEY) === "1";
-    } catch {
-      return false;
-    }
+    try { return localStorage.getItem(DEMO_KEY) === "1"; } catch { return false; }
   });
 
   const demoDeckRef = useRef<DemoFactoid[]>(shuffle(DEMO_FACTOIDS));
@@ -98,6 +107,16 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   isLoadingRef.current = isLoading;
   const demoModeRef = useRef(demoMode);
   demoModeRef.current = demoMode;
+
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchGenerationRef = useRef(0);
+
+  const clearFallbackTimer = () => {
+    if (fallbackTimerRef.current !== null) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+  };
 
   const drawDemo = useCallback((): DemoFactoid => {
     if (demoIdxRef.current >= demoDeckRef.current.length) {
@@ -127,37 +146,6 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setSelectedLocation = useCallback((loc: Location) => {
-    const prev = selectedLocationRef.current;
-    const isDifferent =
-      !prev ||
-      prev.lat !== loc.lat ||
-      prev.lng !== loc.lng ||
-      prev.name !== loc.name;
-    selectedLocationRef.current = loc;
-    setSelectedLocationState(loc);
-    if (isDifferent) {
-      setFactoids([]);
-      factoidsRef.current = [];
-      setCurrentFactoidIndex(0);
-      setError(null);
-      setWildcardFactoid(null);
-      setIsWildcard(false);
-      setIsFreestyle(false);
-      setLoadingReady(false);
-      setLoadingMessage("ambulating...");
-      setLoadingTick(0);
-      if (!demoModeRef.current) {
-        void fetchFactoidsRef.current?.();
-      }
-    }
-  }, []);
-
-  const clearFactoids = useCallback(() => {
-    setFactoids([]);
-    setCurrentFactoidIndex(0);
-  }, []);
-
   useEffect(() => {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
@@ -181,14 +169,35 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     const loc = selectedLocationRef.current;
     if (!loc) return;
     if (isLoadingRef.current) return;
+
+    const gen = ++fetchGenerationRef.current;
     setLoadingReady(false);
     setIsLoading(true);
     isLoadingRef.current = true;
     setError(null);
+    clearFallbackTimer();
+
+    // Layer 5 — 6-second fallback: serve a demo fact as a placeholder
+    fallbackTimerRef.current = setTimeout(() => {
+      fallbackTimerRef.current = null;
+      if (fetchGenerationRef.current !== gen) return;
+      if (factoidsRef.current.length > 0) return;
+      console.log("[kapit] 6s timeout: serving archive fallback");
+      const fallback = demoToFactoid(drawDemo(), "fallback");
+      fallback.archiveFallback = true;
+      fallback.location = loc.name;
+      setFactoids([fallback]);
+      factoidsRef.current = [fallback];
+      setCurrentFactoidIndex(0);
+      setLoadingReady(true);
+      setLoadingMessage("apparatus ready");
+      setIsLoading(false);
+      isLoadingRef.current = false;
+    }, FALLBACK_TIMEOUT_MS);
+
     try {
-      const apiBase = BASE_URL.replace(/\/$/, "").replace("/kapit-web", "");
-      const url = `${apiBase}/api/kapit/factoids`;
-      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name };
+      const url = `${apiBase()}/api/kapit/factoids`;
+      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name, count: 3 };
       console.log("[kapit] fetchFactoids POST", url, body);
       const response = await fetch(url, {
         method: "POST",
@@ -199,21 +208,16 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) throw new Error(`Failed to fetch factoids (${response.status})`);
       const data = await response.json();
       console.log("[kapit] fetchFactoids data", { count: data?.factoids?.length, cached: data?.cached });
+
+      if (fetchGenerationRef.current !== gen) return;
+
       const current = selectedLocationRef.current;
-      if (
-        !current ||
-        current.lat !== loc.lat ||
-        current.lng !== loc.lng ||
-        current.name !== loc.name
-      ) {
-        return;
-      }
-      const mapped: Factoid[] = data.factoids.map(
-        (f: { factoid: string; year: string; category: string }, i: number) => ({
-          ...f,
-          location: loc.name,
-          id: `${loc.lat.toFixed(3)}-${loc.lng.toFixed(3)}-${i}-${Date.now()}`,
-        })
+      if (!current || current.lat !== loc.lat || current.lng !== loc.lng) return;
+
+      clearFallbackTimer();
+
+      const mapped: Factoid[] = (data.factoids as { factoid: string; year: string; category: string }[]).map(
+        (f) => ({ ...f, location: loc.name, id: makeId("api") })
       );
       setFactoids(mapped);
       factoidsRef.current = mapped;
@@ -221,21 +225,74 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       setLoadingReady(true);
       setLoadingMessage("apparatus ready");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      if (fetchGenerationRef.current !== gen) return;
+      clearFallbackTimer();
+      // Only show error if we have no fallback facts
+      if (factoidsRef.current.length === 0) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      }
     } finally {
-      setIsLoading(false);
-      isLoadingRef.current = false;
+      if (fetchGenerationRef.current === gen) {
+        setIsLoading(false);
+        isLoadingRef.current = false;
+      }
     }
-  }, []);
+  }, [drawDemo]);
   fetchFactoidsRef.current = fetchFactoids;
+
+  const setSelectedLocation = useCallback((loc: Location) => {
+    const prev = selectedLocationRef.current;
+    const isDifferent =
+      !prev || prev.lat !== loc.lat || prev.lng !== loc.lng || prev.name !== loc.name;
+    selectedLocationRef.current = loc;
+    setSelectedLocationState(loc);
+
+    if (!isDifferent) return;
+
+    fetchGenerationRef.current++;
+    clearFallbackTimer();
+    setFactoids([]);
+    factoidsRef.current = [];
+    setCurrentFactoidIndex(0);
+    setError(null);
+    setWildcardFactoid(null);
+    setIsWildcard(false);
+    setIsFreestyle(false);
+    setLoadingReady(false);
+    setLoadingMessage("ambulating...");
+    setLoadingTick(0);
+
+    if (demoModeRef.current) return;
+
+    // Layer 1 — preloaded facts: instant, no API call
+    const preloaded = findPreloadedLocation(loc.lat, loc.lng, loc.name);
+    if (preloaded) {
+      console.log("[kapit] serving preloaded facts for", preloaded.name);
+      const shuffledFacts = shuffle(preloaded.facts);
+      const mapped = shuffledFacts.map((f) => preloadedToFactoid(f, loc.name));
+      setFactoids(mapped);
+      factoidsRef.current = mapped;
+      setCurrentFactoidIndex(0);
+      setLoadingReady(true);
+      setLoadingMessage("apparatus ready");
+      return;
+    }
+
+    // Non-preloaded: fetch from API
+    void fetchFactoidsRef.current?.();
+  }, []);
+
+  const clearFactoids = useCallback(() => {
+    setFactoids([]);
+    setCurrentFactoidIndex(0);
+  }, []);
 
   const fetchWildcard = useCallback(async () => {
     setIsLoading(true);
     setLoadingReady(false);
     setError(null);
     try {
-      const apiBase = BASE_URL.replace(/\/$/, "").replace("/kapit-web", "");
-      const response = await fetch(`${apiBase}/api/kapit/wildcard`, {
+      const response = await fetch(`${apiBase()}/api/kapit/wildcard`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "{}",
@@ -243,12 +300,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) throw new Error("Failed to fetch wildcard");
       const data = await response.json();
       const f = data.factoid as { factoid: string; year: string; category: string };
-      const wc: Factoid = {
-        ...f,
-        location: "Anywhere",
-        id: `wild-${Date.now()}`,
-      };
-      setWildcardFactoid(wc);
+      setWildcardFactoid({ ...f, location: "Anywhere", id: makeId("wild") });
       setLoadingReady(true);
       setLoadingMessage("mechanism engaged");
     } catch (err) {
@@ -268,8 +320,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     if (demoModeRef.current) {
       const isFourth = next % 4 === 0;
       if (isFourth) {
-        const wf = demoToFactoid(drawDemoWild(), "demo-wild");
-        setWildcardFactoid(wf);
+        setWildcardFactoid(demoToFactoid(drawDemoWild(), "demo-wild"));
         setIsWildcard(true);
       } else {
         setIsWildcard(false);
@@ -301,13 +352,10 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const triggerFreestyle = useCallback(async () => {
     setIsFreestyle(true);
     setIsWildcard(true);
-
     if (demoModeRef.current) {
-      const wf = demoToFactoid(drawDemoWild(), "demo-freestyle");
-      setWildcardFactoid(wf);
+      setWildcardFactoid(demoToFactoid(drawDemoWild(), "demo-freestyle"));
       return;
     }
-
     setWildcardFactoid(null);
     await fetchWildcard();
   }, [fetchWildcard, drawDemoWild]);
