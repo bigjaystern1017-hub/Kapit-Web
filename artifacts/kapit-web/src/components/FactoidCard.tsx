@@ -202,7 +202,15 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onA
             )}
             <span className="pill pill-bourbon font-mono">{getCategoryLabel(factoid.category)}</span>
             <span className="pill pill-dark font-mono">{shortYear(factoid.year)}</span>
-            <span className="pill pill-blue-soft font-mono">◆ {factoid.location}</span>
+            {factoid.isGlobalWildcard ? (
+              <span className="pill font-mono" style={{ backgroundColor: "var(--brass)", color: "var(--warm-black)", border: "1px solid var(--warm-black)" }}>
+                ⚡ WILDCARD · {factoid.location}
+              </span>
+            ) : (
+              <span className="pill pill-blue-soft font-mono">
+                {factoid.broadRadius ? "◎" : "◆"} {factoid.location}
+              </span>
+            )}
           </div>
 
           <div style={{ marginBottom: 22 }}>

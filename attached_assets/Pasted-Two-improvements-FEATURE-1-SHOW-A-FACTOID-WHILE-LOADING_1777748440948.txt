@@ -1,0 +1,38 @@
+Two improvements:
+FEATURE 1 — SHOW A FACTOID WHILE LOADING:
+While the API is loading facts for the user's location, don't just show the spinning gear and 'ambulating...' text. Instead, show a real factoid from a completely different part of the world as entertainment while they wait.
+
+Create an array of 30-40 pre-written 'did you know' style one-liner facts from around the world. These should be SHORT — one sentence max, punchy, fascinating. Examples:
+
+'In 1932, Australia lost a war against emus. The emus won.'
+'Oxford University is older than the Aztec Empire.'
+'Cleopatra lived closer in time to the moon landing than to the building of the Great Pyramid.'
+'A group of flamingos is called a flamboyance.'
+'The inventor of the Pringles can is buried in one.'
+'Honey never spoils. 3,000-year-old honey from Egyptian tombs is still edible.'
+'There are more possible chess games than atoms in the observable universe.'
+'The shortest war in history lasted 38 minutes — Britain vs Zanzibar, 1896.'
+'Nintendo was founded in 1889. They originally made playing cards.'
+'Liechtenstein's army went to war with 80 soldiers and came back with 81. They made a friend.'
+Generate 25-30 more in the same style — short, punchy, genuinely surprising
+
+
+Display these on a small card that appears in the loading area, styled like a mini factoid card:
+
+Small label at top: 'WHILE YOU WAIT' or 'FROM THE ARCHIVES' in JetBrains Mono, 9px, muted color
+The one-liner fact in Libre Caslon Text italic, 15px
+Card has a cream background, subtle shadow, same styling as the app
+The card fades in smoothly when loading starts
+Every 3 seconds, crossfade to a different random fact from the array
+Keep the spinning gear and dot progress below the card
+
+
+When the actual location facts finish loading, the loading card fades out and the snap section appears as normal.
+
+FEATURE 2 — FIX DUPLICATE FACTS + WIDER VARIETY:
+The app keeps serving the same facts for the same area. Fix this:
+
+Update the API prompt to include this instruction: 'The user has already heard facts about this area before. Give me facts I have NOT already provided. Focus on obscure, lesser-known history. Draw from a wider geographic and temporal range. Cover different centuries, different topics, different types of people and events. Think beyond the obvious landmarks and famous events. Include facts about: local food history, forgotten scandals, unusual architecture details, strange laws that existed, notable animals, weather events, underground infrastructure, art and music scenes, immigrant community history, sports oddities, scientific discoveries, and crimes.'
+Track which facts have been served in the current session (store fact text in a Set or array). When new facts come back from the API, filter out any that are too similar to previously served facts (check if the first 20 words match any previous fact). If duplicates are found, make another API call requesting fresh facts with the instruction 'Do NOT repeat any of these topics: [list of previous fact topics]'.
+Every 3rd API call, regardless of location, change the radius in the prompt from 10 miles to 50 miles. This pulls in facts from the broader metro area — so standing in Park Slope you might get facts about the Bronx, Staten Island, or Jersey City. Label these with their actual location so the user knows it's nearby but not right here.
+Every 5th API call, ignore location entirely and request a wildcard fact from anywhere in the world. Label it as '⚡ WILDCARD · [actual location]'

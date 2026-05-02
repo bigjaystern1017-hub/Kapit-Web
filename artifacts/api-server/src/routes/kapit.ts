@@ -10,18 +10,30 @@ interface Factoid {
   factoid: string;
   year: string;
   category: string;
+  location?: string;
 }
 
 router.post("/kapit/factoids", async (req, res) => {
   const startedAt = Date.now();
   try {
-    const { lat, lng, locationName, count = 3 } = req.body as {
+    const {
+      lat,
+      lng,
+      locationName,
+      count = 3,
+      seenTopics = [],
+      expandRadius = false,
+      wildcardMode = false,
+    } = req.body as {
       lat: number;
       lng: number;
       locationName: string;
       count?: number;
+      seenTopics?: string[];
+      expandRadius?: boolean;
+      wildcardMode?: boolean;
     };
-    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count });
+    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count, expandRadius, wildcardMode, seenTopics: seenTopics.length });
 
     if (lat === undefined || lng === undefined || !locationName) {
       console.log("[kapit-api] /kapit/factoids 400 missing fields");
@@ -29,42 +41,72 @@ router.post("/kapit/factoids", async (req, res) => {
       return;
     }
 
-    const cacheKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
-    const cached = factoidCache.get(cacheKey);
+    const mode: "normal" | "broad" | "wildcard" = wildcardMode ? "wildcard" : expandRadius ? "broad" : "normal";
+    const bypassCache = seenTopics.length > 0 || wildcardMode;
+    const cacheKey = `${lat.toFixed(3)},${lng.toFixed(3)}${expandRadius ? "-broad" : ""}`;
 
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      console.log("[kapit-api] /kapit/factoids cache hit", cacheKey, cached.factoids.length, "facts");
-      res.json({ factoids: cached.factoids, cached: true });
-      return;
+    if (!bypassCache) {
+      const cached = factoidCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        console.log("[kapit-api] /kapit/factoids cache hit", cacheKey, cached.factoids.length, "facts");
+        res.json({ factoids: cached.factoids, mode: "normal", cached: true });
+        return;
+      }
     }
-    console.log("[kapit-api] /kapit/factoids calling Anthropic", { cacheKey, count });
+    console.log("[kapit-api] /kapit/factoids calling Anthropic", { cacheKey, count, mode });
 
     const requestedCount = Math.max(1, Math.min(count, 8));
+    const radius = expandRadius ? 50 : 10;
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 800,
-      messages: [
-        {
-          role: "user",
-          content: `You are a brilliant, slightly insufferable cocktail party historian. Give me ${requestedCount} fascinating, unexpected, conversation-worthy historical factoid${requestedCount > 1 ? "s" : ""} about places within roughly 10 miles of these coordinates: ${lat}, ${lng} (near ${locationName}).
+    const avoidClause = seenTopics.length > 0
+      ? `\n- CRITICAL: The user has already heard these facts. Do NOT repeat or even overlap with these topics:\n  ${seenTopics.slice(0, 15).map((t, i) => `${i + 1}. "${t.slice(0, 80)}"`).join("\n  ")}\n- Dig deeper: obscure history, forgotten scandals, unusual laws, local food history, lesser-known people, strange architecture details. Think beyond the obvious.`
+      : "";
+
+    let promptContent: string;
+
+    if (wildcardMode) {
+      promptContent = `You are a brilliant, slightly insufferable cocktail party historian. Give me ${requestedCount} completely random, fascinating historical factoid${requestedCount > 1 ? "s" : ""} from ANYWHERE in the world — different continents, different centuries, completely different topics.
 
 Rules:
-- Each factoid must be about a DIFFERENT topic, person, and location
+- Each factoid must be about a DIFFERENT topic, person, and place
 - Prioritize weird, surprising, scandalous, or counterintuitive facts over famous/well-known ones
 - Each factoid should be 2-3 punchy sentences — bar-conversation length
 - Never start with "Did you know"
 - Tone: casual, punchy, slightly smug — like a charming person who knows too much
-- Include specific years, names, or numbers when possible
+- Include specific years, names, or numbers when possible${avoidClause}
 
 Return ONLY valid JSON array with exactly ${requestedCount} object${requestedCount > 1 ? "s" : ""}, each having:
 - "factoid": string (the 2-3 sentence fact)
 - "year": string (the approximate year or decade, e.g. "1923" or "1890s")
 - "category": string (exactly one of: crime, science, culture, politics, sports, weird, food, architecture, nature)
+- "location": string (the specific city and country, e.g. "Vienna, Austria" or "Kyoto, Japan")
 
-JSON only, no markdown, no explanation.`,
-        },
-      ],
+JSON only, no markdown, no explanation.`;
+    } else {
+      promptContent = `You are a brilliant, slightly insufferable cocktail party historian. Give me ${requestedCount} fascinating, unexpected, conversation-worthy historical factoid${requestedCount > 1 ? "s" : ""} about places within roughly ${radius} miles of these coordinates: ${lat}, ${lng} (near ${locationName}).
+
+Rules:
+- Each factoid must be about a DIFFERENT topic, person, and location within the radius
+- Prioritize weird, surprising, scandalous, or counterintuitive facts over famous/well-known ones
+- Each factoid should be 2-3 punchy sentences — bar-conversation length
+- Never start with "Did you know"
+- Tone: casual, punchy, slightly smug — like a charming person who knows too much
+- Include specific years, names, or numbers when possible
+- Cover different centuries and types of people — food history, crime, forgotten figures, unusual buildings, strange laws${avoidClause}
+${expandRadius ? `- Since the radius is ${radius} miles, facts may come from the wider metro area — include the specific neighborhood, district, or city in the "location" field so the user knows where it happened` : ""}
+
+Return ONLY valid JSON array with exactly ${requestedCount} object${requestedCount > 1 ? "s" : ""}, each having:
+- "factoid": string (the 2-3 sentence fact)
+- "year": string (the approximate year or decade, e.g. "1923" or "1890s")
+- "category": string (exactly one of: crime, science, culture, politics, sports, weird, food, architecture, nature)${expandRadius ? `\n- "location": string (specific neighborhood, district, or city — e.g. "The Bronx, NY" or "Jersey City, NJ")` : ""}
+
+JSON only, no markdown, no explanation.`;
+    }
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 900,
+      messages: [{ role: "user", content: promptContent }],
     });
 
     const content = message.content[0];
@@ -85,10 +127,12 @@ JSON only, no markdown, no explanation.`,
       factoids = JSON.parse(jsonMatch[0]);
     }
 
-    factoidCache.set(cacheKey, { factoids, timestamp: Date.now() });
+    if (!bypassCache) {
+      factoidCache.set(cacheKey, { factoids, timestamp: Date.now() });
+    }
 
-    console.log("[kapit-api] /kapit/factoids ok", { ms: Date.now() - startedAt, count: factoids.length });
-    res.json({ factoids, cached: false });
+    console.log("[kapit-api] /kapit/factoids ok", { ms: Date.now() - startedAt, count: factoids.length, mode });
+    res.json({ factoids, mode, cached: false });
   } catch (err) {
     console.error("[kapit-api] /kapit/factoids error", { ms: Date.now() - startedAt, err });
     req.log.error({ err }, "Error generating factoids");

@@ -15,6 +15,8 @@ export interface Factoid {
   location: string;
   id: string;
   archiveFallback?: boolean;
+  broadRadius?: boolean;
+  isGlobalWildcard?: boolean;
 }
 
 interface KapitContextType {
@@ -39,6 +41,7 @@ interface KapitContextType {
   loadingTick: number;
   demoMode: boolean;
   toggleDemoMode: () => void;
+  markAsServed: (f: Factoid) => void;
 }
 
 const KapitContext = createContext<KapitContextType | null>(null);
@@ -64,6 +67,10 @@ function shuffle<T>(arr: T[]): T[] {
 let _factoidIdSeq = 0;
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${++_factoidIdSeq}`;
+}
+
+function fingerprint(text: string): string {
+  return text.trim().split(/\s+/).slice(0, 20).join(" ").toLowerCase();
 }
 
 function preloadedToFactoid(f: PreloadedFactoid, locationName: string): Factoid {
@@ -110,6 +117,8 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchGenerationRef = useRef(0);
+  const fetchCallCountRef = useRef(0);
+  const servedFactTextsRef = useRef<string[]>([]);
 
   const clearFallbackTimer = () => {
     if (fallbackTimerRef.current !== null) {
@@ -165,12 +174,24 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
   const fetchFactoidsRef = useRef<(() => Promise<void>) | null>(null);
 
+  const markAsServed = useCallback((f: Factoid) => {
+    const fp = fingerprint(f.factoid);
+    if (!servedFactTextsRef.current.includes(fp)) {
+      servedFactTextsRef.current = [...servedFactTextsRef.current.slice(-19), fp];
+    }
+  }, []);
+
   const fetchFactoids = useCallback(async () => {
     const loc = selectedLocationRef.current;
     if (!loc) return;
     if (isLoadingRef.current) return;
 
     const gen = ++fetchGenerationRef.current;
+    const callNum = ++fetchCallCountRef.current;
+    const expandRadius = callNum > 2 && callNum % 3 === 0;
+    const wildcardMode = callNum > 4 && callNum % 5 === 0;
+    const seenTopics = servedFactTextsRef.current.slice(-12);
+
     setLoadingReady(false);
     setIsLoading(true);
     isLoadingRef.current = true;
@@ -197,17 +218,16 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const url = `${apiBase()}/api/kapit/factoids`;
-      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name, count: 3 };
-      console.log("[kapit] fetchFactoids POST", url, body);
+      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name, count: 3, seenTopics, expandRadius, wildcardMode };
+      console.log("[kapit] fetchFactoids POST", url, { callNum, expandRadius, wildcardMode, seenTopics: seenTopics.length });
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      console.log("[kapit] fetchFactoids response", response.status, response.ok);
       if (!response.ok) throw new Error(`Failed to fetch factoids (${response.status})`);
       const data = await response.json();
-      console.log("[kapit] fetchFactoids data", { count: data?.factoids?.length, cached: data?.cached });
+      console.log("[kapit] fetchFactoids data", { count: data?.factoids?.length, mode: data?.mode, cached: data?.cached });
 
       if (fetchGenerationRef.current !== gen) return;
 
@@ -216,9 +236,25 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
       clearFallbackTimer();
 
-      const mapped: Factoid[] = (data.factoids as { factoid: string; year: string; category: string }[]).map(
-        (f) => ({ ...f, location: loc.name, id: makeId("api") })
-      );
+      const responseMode = (data.mode as string) ?? "normal";
+      const isGlobalWildcard = responseMode === "wildcard";
+      const isBroad = responseMode === "broad";
+
+      const raw = data.factoids as { factoid: string; year: string; category: string; location?: string }[];
+
+      // Deduplicate against previously served facts
+      const servedFps = new Set(servedFactTextsRef.current);
+      const deduped = raw.filter((f) => !servedFps.has(fingerprint(f.factoid)));
+      const toUse = deduped.length > 0 ? deduped : raw;
+
+      const mapped: Factoid[] = toUse.map((f) => ({
+        ...f,
+        location: f.location ?? loc.name,
+        id: makeId("api"),
+        broadRadius: isBroad ? true : undefined,
+        isGlobalWildcard: isGlobalWildcard ? true : undefined,
+      }));
+
       setFactoids(mapped);
       factoidsRef.current = mapped;
       setCurrentFactoidIndex(0);
@@ -227,7 +263,6 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       if (fetchGenerationRef.current !== gen) return;
       clearFallbackTimer();
-      // Only show error if we have no fallback facts
       if (factoidsRef.current.length === 0) {
         setError(err instanceof Error ? err.message : "Something went wrong");
       }
@@ -394,6 +429,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         loadingTick,
         demoMode,
         toggleDemoMode,
+        markAsServed,
       }}
     >
       {children}

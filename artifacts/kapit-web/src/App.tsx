@@ -3,6 +3,7 @@ import LocationSelector from "@/components/LocationSelector";
 import SuspenderSnap from "@/components/SuspenderSnap";
 import FactoidCard from "@/components/FactoidCard";
 import Repertoire from "@/components/Repertoire";
+import WaitingFactCard from "@/components/WaitingFactCard";
 import { KapitProvider, useKapit } from "@/context/KapitContext";
 
 const MARQUEE_TEXT = " Charisma in your pocket\u2026  ★  Charisma in your pocket\u2026  ★  Charisma in your pocket\u2026  ★ ";
@@ -25,6 +26,7 @@ function HomeScreen() {
     loadingTick,
     demoMode,
     toggleDemoMode,
+    markAsServed,
   } = useKapit();
 
   const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
@@ -112,8 +114,11 @@ function HomeScreen() {
   const handleRevealComplete = useCallback(() => {
     setPhase("revealed");
     const f = getCurrentFactoid();
-    if (f) addToRepertoire(f);
-  }, [getCurrentFactoid, addToRepertoire]);
+    if (f) {
+      addToRepertoire(f);
+      markAsServed(f);
+    }
+  }, [getCurrentFactoid, addToRepertoire, markAsServed]);
 
   const handleAgain = useCallback(() => {
     setPhase("spinning");
@@ -273,6 +278,7 @@ function HomeScreen() {
 
             {showLoading && (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, paddingTop: 24, paddingBottom: 22 }}>
+                <WaitingFactCard />
                 <div className="loading-gear">
                   <div className="loading-gear-inner" />
                   <div className="loading-tick loading-tick-1" />
