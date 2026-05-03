@@ -13,6 +13,13 @@ interface Factoid {
   location?: string;
 }
 
+const PERSONALITY_SUFFIX: Record<number, string> = {
+  0: "",
+  1: "\n- Focus on PEOPLE — strange characters, eccentric locals, forgotten heroes, infamous villains who lived or worked in this area. Name them. Tell us exactly what they did.",
+  2: "\n- Focus on INCIDENTS — bizarre events, accidents, heists, scandals, weather disasters, animal escapes, riots, forgotten celebrations that happened here. Be specific about dates and consequences.",
+  3: "\n- Focus on HIDDEN INFRASTRUCTURE — tunnels, underground rivers, buried buildings, secret rooms, forgotten subway stations, architectural oddities, things hidden in plain sight near this location.",
+};
+
 router.post("/kapit/factoids", async (req, res) => {
   const startedAt = Date.now();
   try {
@@ -24,6 +31,8 @@ router.post("/kapit/factoids", async (req, res) => {
       seenTopics = [],
       expandRadius = false,
       wildcardMode = false,
+      promptPersonality = 0,
+      isRetry = false,
     } = req.body as {
       lat: number;
       lng: number;
@@ -32,6 +41,8 @@ router.post("/kapit/factoids", async (req, res) => {
       seenTopics?: string[];
       expandRadius?: boolean;
       wildcardMode?: boolean;
+      promptPersonality?: number;
+      isRetry?: boolean;
     };
     console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count, expandRadius, wildcardMode, seenTopics: seenTopics.length });
 
@@ -42,8 +53,9 @@ router.post("/kapit/factoids", async (req, res) => {
     }
 
     const mode: "normal" | "broad" | "wildcard" = wildcardMode ? "wildcard" : expandRadius ? "broad" : "normal";
-    const bypassCache = seenTopics.length > 0 || wildcardMode;
+    const bypassCache = seenTopics.length > 0 || wildcardMode || isRetry;
     const cacheKey = `${lat.toFixed(3)},${lng.toFixed(3)}${expandRadius ? "-broad" : ""}`;
+    const personalitySuffix = PERSONALITY_SUFFIX[promptPersonality % 4] ?? "";
 
     if (!bypassCache) {
       const cached = factoidCache.get(cacheKey);
@@ -73,7 +85,7 @@ Rules:
 - Each factoid should be 2-3 punchy sentences — bar-conversation length
 - Never start with "Did you know"
 - Tone: casual, punchy, slightly smug — like a charming person who knows too much
-- Include specific years, names, or numbers when possible${avoidClause}
+- Include specific years, names, or numbers when possible${personalitySuffix}${avoidClause}
 
 Return ONLY valid JSON array with exactly ${requestedCount} object${requestedCount > 1 ? "s" : ""}, each having:
 - "factoid": string (the 2-3 sentence fact)
@@ -92,7 +104,7 @@ Rules:
 - Never start with "Did you know"
 - Tone: casual, punchy, slightly smug — like a charming person who knows too much
 - Include specific years, names, or numbers when possible
-- Cover different centuries and types of people — food history, crime, forgotten figures, unusual buildings, strange laws${avoidClause}
+- Cover different centuries and types of people — food history, crime, forgotten figures, unusual buildings, strange laws${personalitySuffix}${avoidClause}
 ${expandRadius ? `- Since the radius is ${radius} miles, facts may come from the wider metro area — include the specific neighborhood, district, or city in the "location" field so the user knows where it happened` : ""}
 
 Return ONLY valid JSON array with exactly ${requestedCount} object${requestedCount > 1 ? "s" : ""}, each having:
@@ -106,6 +118,7 @@ JSON only, no markdown, no explanation.`;
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 900,
+      temperature: 0.9,
       messages: [{ role: "user", content: promptContent }],
     });
 
@@ -140,12 +153,13 @@ JSON only, no markdown, no explanation.`;
   }
 });
 
-router.post("/kapit/wildcard", async (_req, res) => {
+router.post("/kapit/wildcard", async (req, res) => {
   const startedAt = Date.now();
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 400,
+      temperature: 0.9,
       messages: [
         {
           role: "user",

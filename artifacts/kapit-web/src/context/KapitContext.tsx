@@ -73,6 +73,39 @@ function fingerprint(text: string): string {
   return text.trim().split(/\s+/).slice(0, 20).join(" ").toLowerCase();
 }
 
+// ── localStorage fact history ────────────────────────────────────────────────
+const SEEN_FACTS_KEY = "kapit_seen_facts";
+const PROMPT_COUNTER_KEY = "kapit_prompt_counter";
+const MAX_SEEN_FACTS = 200;
+
+function seenFingerprint(text: string): string {
+  return text.trim().slice(0, 40).toLowerCase();
+}
+
+function loadSeenFacts(): string[] {
+  try { return JSON.parse(localStorage.getItem(SEEN_FACTS_KEY) || "[]") as string[]; }
+  catch { return []; }
+}
+
+function persistSeenFact(text: string): void {
+  try {
+    const seen = loadSeenFacts();
+    const fp = seenFingerprint(text);
+    if (seen.includes(fp)) return;
+    const updated = [...seen, fp].slice(-MAX_SEEN_FACTS);
+    localStorage.setItem(SEEN_FACTS_KEY, JSON.stringify(updated));
+  } catch {}
+}
+
+// Returns current counter value (0–11), then advances it
+function getAndAdvancePromptCounter(): number {
+  try {
+    const n = parseInt(localStorage.getItem(PROMPT_COUNTER_KEY) || "0", 10) % 12;
+    localStorage.setItem(PROMPT_COUNTER_KEY, String((n + 1) % 12));
+    return n;
+  } catch { return 0; }
+}
+
 function preloadedToFactoid(f: PreloadedFactoid, locationName: string): Factoid {
   return { ...f, location: locationName, id: makeId("pre") };
 }
@@ -119,6 +152,8 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const fetchGenerationRef = useRef(0);
   const fetchCallCountRef = useRef(0);
   const servedFactTextsRef = useRef<string[]>([]);
+  const locationSnapCountRef = useRef(0);
+  const hasRetriedRef = useRef(false);
 
   const clearFallbackTimer = () => {
     if (fallbackTimerRef.current !== null) {
@@ -179,6 +214,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     if (!servedFactTextsRef.current.includes(fp)) {
       servedFactTextsRef.current = [...servedFactTextsRef.current.slice(-19), fp];
     }
+    persistSeenFact(f.factoid);
   }, []);
 
   const fetchFactoids = useCallback(async () => {
@@ -190,7 +226,20 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     const callNum = ++fetchCallCountRef.current;
     const expandRadius = callNum > 2 && callNum % 3 === 0;
     const wildcardMode = callNum > 4 && callNum % 5 === 0;
-    const seenTopics = servedFactTextsRef.current.slice(-12);
+    const isRetry = hasRetriedRef.current;
+
+    // Build seenTopics: last 10 from localStorage + current session fingerprints
+    const lsSeenFacts = loadSeenFacts();
+    const lsSeenSet = new Set(lsSeenFacts);
+    const sessionFpSet = new Set(servedFactTextsRef.current);
+    const seenTopics = [
+      ...servedFactTextsRef.current.slice(-6),
+      ...lsSeenFacts.slice(-10),
+    ].slice(-15);
+
+    // Prompt personality rotates every 3 calls (0-11 counter → 0-3 personality)
+    const rawCounter = getAndAdvancePromptCounter();
+    const promptPersonality = Math.floor(rawCounter / 3);
 
     setLoadingReady(false);
     setIsLoading(true);
@@ -198,7 +247,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     clearFallbackTimer();
 
-    // Layer 5 — 6-second fallback: serve a demo fact as a placeholder
+    // 6-second fallback: serve a demo fact as a placeholder
     fallbackTimerRef.current = setTimeout(() => {
       fallbackTimerRef.current = null;
       if (fetchGenerationRef.current !== gen) return;
@@ -216,10 +265,12 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       isLoadingRef.current = false;
     }, FALLBACK_TIMEOUT_MS);
 
+    let retryScheduled = false;
+
     try {
       const url = `${apiBase()}/api/kapit/factoids`;
-      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name, count: 3, seenTopics, expandRadius, wildcardMode };
-      console.log("[kapit] fetchFactoids POST", url, { callNum, expandRadius, wildcardMode, seenTopics: seenTopics.length });
+      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name, count: 3, seenTopics, expandRadius, wildcardMode, promptPersonality, isRetry };
+      console.log("[kapit] fetchFactoids POST", url, { callNum, expandRadius, wildcardMode, promptPersonality, isRetry, seenTopics: seenTopics.length });
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -242,9 +293,20 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
       const raw = data.factoids as { factoid: string; year: string; category: string; location?: string }[];
 
-      // Deduplicate against previously served facts
-      const servedFps = new Set(servedFactTextsRef.current);
-      const deduped = raw.filter((f) => !servedFps.has(fingerprint(f.factoid)));
+      // Deduplicate against both session fingerprints and localStorage history
+      const deduped = raw.filter((f) =>
+        !sessionFpSet.has(fingerprint(f.factoid)) && !lsSeenSet.has(seenFingerprint(f.factoid))
+      );
+
+      // If every fact is a duplicate and we haven't retried yet, schedule a retry
+      if (deduped.length === 0 && !isRetry) {
+        console.log("[kapit] all facts are duplicates — scheduling retry");
+        hasRetriedRef.current = true;
+        retryScheduled = true;
+        return;
+      }
+
+      hasRetriedRef.current = false; // reset after successful fresh batch
       const toUse = deduped.length > 0 ? deduped : raw;
 
       const mapped: Factoid[] = toUse.map((f) => ({
@@ -270,6 +332,10 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
       if (fetchGenerationRef.current === gen) {
         setIsLoading(false);
         isLoadingRef.current = false;
+        if (retryScheduled) {
+          clearFallbackTimer();
+          setTimeout(() => void fetchFactoidsRef.current?.(), 80);
+        }
       }
     }
   }, [drawDemo]);
@@ -296,6 +362,8 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     setLoadingReady(false);
     setLoadingMessage("ambulating...");
     setLoadingTick(0);
+    locationSnapCountRef.current = 0;
+    hasRetriedRef.current = false;
 
     if (demoModeRef.current) return;
 
@@ -351,6 +419,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     setSnapCount(next);
     setLoadingTick((t) => t + 1);
     setIsFreestyle(false);
+    locationSnapCountRef.current += 1;
 
     if (demoModeRef.current) {
       const isFourth = next % 4 === 0;
@@ -369,7 +438,11 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     }
 
     const isFourth = next % 4 === 0;
-    if (isFourth) {
+    // After 5+ snaps at the same location, mix in a 50/50 wildcard when running low on fresh facts
+    const isRunningLow = factoidsRef.current.length <= 1;
+    const shouldMixWildcard = !isFourth && locationSnapCountRef.current > 5 && isRunningLow && Math.random() < 0.5;
+
+    if (isFourth || shouldMixWildcard) {
       setWildcardFactoid(null);
       setIsWildcard(true);
       await fetchWildcard();

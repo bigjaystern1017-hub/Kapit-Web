@@ -1,0 +1,16 @@
+The app keeps serving the same facts when restarted from the same location. Fix this with client-side duplicate tracking:
+
+Create a 'fact history' system using localStorage. Every time a fact is served to the user, save a fingerprint of it — use the first 40 characters of the factoid text as the key. Store these in a localStorage array called 'kapit_seen_facts'. Cap the array at 200 entries and drop the oldest when it overflows.
+When new facts come back from the API, filter out any fact whose first 40 characters match something in kapit_seen_facts. If ALL returned facts are duplicates, immediately trigger a new API call with a modified prompt.
+Add a 'previously covered topics' instruction to the API prompt. Before making any API call, read the last 10 entries from kapit_seen_facts and extract a keyword or two from each. Then append this to the prompt: 'The user has already heard facts about these topics: [list of keywords]. Do NOT repeat any of these subjects. Find completely different stories, people, events, and locations within the radius. Dig deeper — obscure history, forgotten people, strange incidents, underground culture, food origins, immigrant stories, unusual architecture, weird laws, animal incidents, scientific oddities.'
+Rotate the prompt personality every few calls to get different types of facts. Keep a counter in localStorage. Use these rotating instructions:
+
+Calls 1-3: default prompt (weird and surprising)
+Calls 4-6: add 'Focus on PEOPLE — strange characters, eccentric locals, forgotten heroes, infamous villains who lived or worked in this area'
+Calls 7-9: add 'Focus on INCIDENTS — bizarre events, accidents, heists, scandals, weather disasters, animal escapes, riots, celebrations that happened here'
+Calls 10-12: add 'Focus on HIDDEN INFRASTRUCTURE — tunnels, underground rivers, buried buildings, secret rooms, forgotten subway stations, architectural oddities, things hidden in plain sight near this location'
+Then reset the counter and loop
+
+
+Also increase the randomness of the AI response. Add temperature: 0.9 to the API call parameters (the Anthropic API supports a temperature parameter). Higher temperature means more varied and unexpected outputs. The current default is probably around 0.7.
+As a final fallback, if the user has snapped 5+ times in the same session at the same location and is running low on fresh facts, start mixing in wildcard facts from anywhere in the world at a 50/50 ratio with local facts. Label the wildcards as '⚡ WILDCARD · [location]' so the user knows it's not local.
