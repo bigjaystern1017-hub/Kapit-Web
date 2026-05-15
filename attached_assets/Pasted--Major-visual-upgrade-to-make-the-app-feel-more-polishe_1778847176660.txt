@@ -1,0 +1,90 @@
+"Major visual upgrade to make the app feel more polished and professional. Keep ALL existing functionality — snap mechanic, sounds, API, fact generation, demo mode, everything. Only change the visual presentation and layout.
+CHANGE 1 — BOTTOM NAVIGATION BAR:
+Add a persistent bottom navigation bar that stays fixed at the bottom of the screen. Four tabs:
+
+⚡ Pull (the main snap screen — what the app currently shows)
+📦 Stash (the saved facts collection — currently called 'Your Repertoire' and 'your bits')
+👤 Profile (placeholder for now — just show the user's location and a 'settings' label)
+
+Style the nav bar:
+
+Background: #1C1916 (warm black)
+Height: 60px plus safe area padding at bottom
+Icons above labels, labels in JetBrains Mono 9px
+Active tab: bourbon color (#C4793A) for both icon and label
+Inactive tabs: smoke color (#8A8078)
+Subtle top border: 1px solid rgba(196,121,58,0.15)
+The Pull tab should be the default active tab on app open
+
+Make the main content area scroll above the nav bar — the nav bar never scrolls away. Each tab shows different content but for now only Pull and Stash need real content. Profile can be a placeholder.
+CHANGE 2 — RENAME REPERTOIRE TO STASH:
+Change all references from 'Your Repertoire', 'your bits', 'X in the chamber' to:
+
+Header: 'My Stash' in Fraunces bold, 28px
+Subheader: '[count] facts' in JetBrains Mono, 12px, smoke color
+
+When the user navigates to the Stash tab, show the saved facts in a card grid (not a horizontal scroll). Each card should be:
+
+White background, subtle shadow, border-radius 4px
+Category badge pill at top left (using the new colored badges from Prompt #22)
+Year pill next to category badge
+Fact headline text truncated to 2 lines in Libre Caslon Text, 15px
+Location name at bottom in JetBrains Mono, 10px, smoke color
+Cards arranged in a single column, full width, with 12px gap between them
+Tapping a card expands it to show the full fact with the YOUR AUDIENCE AWAITS prompt
+
+Add filter pills at the top of the Stash screen — horizontally scrollable pills for: All, Famous, Crime, Haunted, Nightlife, Dining, History, Hidden. Tapping a pill filters the stash to that category. 'All' is selected by default. Active pill has bourbon background with cream text, inactive pills have cream background with smoke text and a subtle border.
+CHANGE 3 — FACTOID CARD UPGRADE:
+When a fact is revealed after the snap, upgrade the card design:
+
+Add a dark gradient overlay area at the top of the card (about 80px tall) with a warm black to transparent gradient going downward. This is where a location image WOULD go in the future — for now just show the gradient as a design element with the category badge and year pill positioned on top of it in the upper left.
+Below the gradient area: the fact text with drop cap as we have now
+The ★ NEW FACT label at the very top of the card in JetBrains Mono, 9px, bourbon color
+Keep the YOUR AUDIENCE AWAITS section at the bottom
+
+Upgrade the action buttons at the bottom of the factoid card:
+
+Three buttons in a row, evenly spaced:
+
+Left: a bookmark/save icon (outline when unsaved, filled when saved) — saves to Stash
+Center: 'SNAP AGAIN' as the primary bourbon-filled button, circular or pill shaped, larger than the other two
+Right: share icon (↗) — triggers the existing share functionality
+
+
+Style the buttons: save and share as 48px circular buttons with subtle borders, SNAP AGAIN as a larger pill button with bourbon background and cream text
+
+CHANGE 4 — DAILY STREAK:
+Add a small daily streak indicator near the top of the Pull screen, below the masthead area:
+
+Show a fire emoji 🔥 followed by the streak count in Fraunces bold, 20px
+Below that: 7 small dots representing the days of the week (S M T W T F S) in JetBrains Mono, 8px
+Dots are filled bourbon if the user snapped that day, empty/outlined if not
+Track the streak in localStorage — store an array of dates when the user snapped
+The streak count is the number of consecutive days with at least one snap
+If the user misses a day, the streak resets to 0
+Position this as a small subtle element, not a major feature — maybe right-aligned near the top or in a small card
+
+CHANGE 5 — COPY UPDATES:
+
+The pull screen subtitle: change 'Pull. Snap. Be amazed. Yer welcome.' to 'A tiny ritual of curiosity.'
+Add 'Pocket trivia for more magnetic conversations.' as smaller text below the Kapit wordmark, in Libre Caslon Text, 14px, smoke color
+The Kapit Black section: change 'enter invite code →' button to 'GO DARK →'
+When a fact is loading, if the loading entertainment fact card is showing, label it 'WHILE YOU WAIT' in JetBrains Mono, 9px
+
+CHANGE 6 — THE BRAND SEAL:
+Add a small circular badge/seal element in the footer area. It should be:
+
+A circle, about 50px diameter
+Dark background (#1C1916)
+A large 'K' in the center in Fraunces, cream colored
+Around the circle edge, tiny text reading 'PULL · SNAP · BE AMAZED · REPEAT' in JetBrains Mono, curved around the circle
+If curved text is too complex, just put it as straight text below the circle
+This appears in the footer near the existing 'Kapit™ · 2026' text
+
+CHANGE 7 — OVERALL POLISH:
+
+Add a very subtle warm gradient to the page background — not flat cream but a gentle shift from slightly warmer at top (#F7F0E3) to slightly cooler at bottom (#F0EBE0)
+All cards should have consistent shadows: 0 2px 12px rgba(0,0,0,0.06)
+Add a subtle 0.2 second transition on all interactive elements (buttons, pills, tabs) for hover and active states
+The masthead area (Kapit wordmark, tagline, streak) should have slightly more padding and breathing room
+Make sure the bottom nav bar doesn't overlap any content — add enough padding at the bottom of the scrollable area
