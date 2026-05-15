@@ -42,6 +42,7 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   const onDragEndRef = useRef(onDragEnd);
 
   const whipAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
 
   useEffect(() => { disabledRef.current = disabled; }, [disabled]);
   useEffect(() => { onSnapRef.current = onSnap; }, [onSnap]);
@@ -100,6 +101,11 @@ export default function SuspenderSnap({ onSnap, onDragStart, onDragEnd, disabled
   }, [fireSnap]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!audioUnlockedRef.current && whipAudioRef.current) {
+      const a = whipAudioRef.current;
+      a.volume = 0.01;
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.volume = 1.0; audioUnlockedRef.current = true; }).catch(() => {});
+    }
     if (disabledRef.current) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     startYRef.current = e.clientY;
