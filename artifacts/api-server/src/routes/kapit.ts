@@ -15,9 +15,9 @@ interface Factoid {
 
 const PERSONALITY_SUFFIX: Record<number, string> = {
   0: "",
-  1: "\n- Focus on PEOPLE — strange characters, eccentric locals, forgotten heroes, infamous villains who lived or worked in this area. Name them. Tell us exactly what they did.",
-  2: "\n- Focus on INCIDENTS — bizarre events, accidents, heists, scandals, weather disasters, animal escapes, riots, forgotten celebrations that happened here. Be specific about dates and consequences.",
-  3: "\n- Focus on HIDDEN INFRASTRUCTURE — tunnels, underground rivers, buried buildings, secret rooms, forgotten subway stations, architectural oddities, things hidden in plain sight near this location.",
+  1: "\n- This batch: lean heavy on CELEBRITY and NIGHTLIFE. Famous people, musicians, actors, athletes, rappers who have real connections to this area. Also legendary clubs, bars, music venues, recording studios, after-hours spots that existed here.",
+  2: "\n- This batch: lean heavy on CRIME and HAUNTED. Criminal history, mob activity, famous arrests, heists, unsolved cases. Also ghost stories, haunted buildings, cursed locations, creepy legends, unexplained events in this area.",
+  3: "\n- This batch: lean heavy on HIDDEN and FOOD. Secret tunnels, underground infrastructure, hidden rooms, forgotten buildings, structures with dark pasts. Also the origin stories of famous restaurants, bars, dishes, and cocktails from this area.",
 };
 
 router.post("/kapit/factoids", async (req, res) => {
@@ -77,42 +77,58 @@ router.post("/kapit/factoids", async (req, res) => {
     let promptContent: string;
 
     if (wildcardMode) {
-      promptContent = `You are a brilliant, slightly insufferable cocktail party historian. Give me ${requestedCount} completely random, fascinating historical factoid${requestedCount > 1 ? "s" : ""} from ANYWHERE in the world — different continents, different centuries, completely different topics.
+      promptContent = `You are Kapit — a conversation weapon. Return ${requestedCount} fascinating, unexpected, conversation-worthy fact${requestedCount > 1 ? "s" : ""} from ANYWHERE in the world — different continents, different centuries, completely different topics.
 
-Rules:
-- Each factoid must be about a DIFFERENT topic, person, and place
-- Prioritize weird, surprising, scandalous, or counterintuitive facts over famous/well-known ones
-- Each factoid should be 2-3 punchy sentences — bar-conversation length
-- Never start with "Did you know"
-- Tone: casual, punchy, slightly smug — like a charming person who knows too much
-- Include specific years, names, or numbers when possible${personalitySuffix}${avoidClause}
+You are NOT a tour guide. You are NOT a history teacher. You are the friend who knows EVERYTHING — the history AND the gossip AND the ghost stories AND which celebrity was involved.
 
-Return ONLY valid JSON array with exactly ${requestedCount} object${requestedCount > 1 ? "s" : ""}, each having:
-- "factoid": string (the 2-3 sentence fact)
-- "year": string (the approximate year or decade, e.g. "1923" or "1890s")
-- "category": string (exactly one of: crime, science, culture, politics, sports, weird, food, architecture, nature)
-- "location": string (the specific city and country, e.g. "Vienna, Austria" or "Kyoto, Japan")
+FACT CATEGORIES — mix these types:
+- CELEBRITY: Famous people, what they did, where they were
+- CRIME: Mob hits, heists, unsolved mysteries, infamous arrests
+- HAUNTED: Ghost stories, paranormal legends, cursed places, creepy history
+- MUSIC & NIGHTLIFE: Legendary clubs, albums, concerts, after-hours spots
+- FOOD & DRINK: Origin stories of famous restaurants, bars, dishes, cocktails
+- SPORTS: Athletes, legendary matches, rivalries
+- HIDDEN: Secret tunnels, buried buildings, hidden infrastructure
+- HISTORY: Wild historical stories — not textbook facts${personalitySuffix}${avoidClause}
 
-JSON only, no markdown, no explanation.`;
+RULES:
+- 2-3 punchy sentences max — bar-conversation length
+- NEVER start with "Did you know"
+- Prioritize: shocking > surprising > interesting > educational
+- Name-drop specific people, addresses, dates
+- Casual, punchy, slightly dramatic tone
+
+Return ONLY a valid JSON array, no markdown:
+[{"factoid":"...","year":"...","category":"one of: celebrity, crime, haunted, music, food, sports, hidden, history, culture","location":"city and country"}]`;
     } else {
-      promptContent = `You are a brilliant, slightly insufferable cocktail party historian. Give me ${requestedCount} fascinating, unexpected, conversation-worthy historical factoid${requestedCount > 1 ? "s" : ""} about places within roughly ${radius} miles of these coordinates: ${lat}, ${lng} (near ${locationName}).
+      promptContent = `You are Kapit — a conversation weapon. Return ${requestedCount} fascinating, unexpected, conversation-worthy fact${requestedCount > 1 ? "s" : ""} about places within roughly ${radius} miles of these coordinates: ${lat}, ${lng} (near ${locationName}).
 
-Rules:
-- Each factoid must be about a DIFFERENT topic, person, and location within the radius
-- Prioritize weird, surprising, scandalous, or counterintuitive facts over famous/well-known ones
-- Each factoid should be 2-3 punchy sentences — bar-conversation length
-- Never start with "Did you know"
-- Tone: casual, punchy, slightly smug — like a charming person who knows too much
-- Include specific years, names, or numbers when possible
-- Cover different centuries and types of people — food history, crime, forgotten figures, unusual buildings, strange laws${personalitySuffix}${avoidClause}
-${expandRadius ? `- Since the radius is ${radius} miles, facts may come from the wider metro area — include the specific neighborhood, district, or city in the "location" field so the user knows where it happened` : ""}
+You are NOT a tour guide. You are NOT a history teacher. You are the friend who knows EVERYTHING about this neighborhood — the history AND the gossip AND the ghost stories AND which celebrity lived on that block.
 
-Return ONLY valid JSON array with exactly ${requestedCount} object${requestedCount > 1 ? "s" : ""}, each having:
-- "factoid": string (the 2-3 sentence fact)
-- "year": string (the approximate year or decade, e.g. "1923" or "1890s")
-- "category": string (exactly one of: crime, science, culture, politics, sports, weird, food, architecture, nature)${expandRadius ? `\n- "location": string (specific neighborhood, district, or city — e.g. "The Bronx, NY" or "Jersey City, NJ")` : ""}
+FACT CATEGORIES — every batch must include a MIX of these types:
+- CELEBRITY: Which famous people lived here, grew up here, got arrested here, had their first gig here. Rappers, actors, athletes, writers, musicians — anyone with a real connection to this area
+- CRIME: Mob hits, famous heists, unsolved mysteries, infamous arrests, gang history, prohibition raids, notable trials
+- HAUNTED: Ghost stories, paranormal legends, cursed buildings, unexplained events, creepy local history
+- MUSIC & NIGHTLIFE: Legendary clubs, albums recorded nearby, concerts, DJs or bands that got their start here, after-hours spots
+- FOOD & DRINK: Origin stories of famous restaurants, bars, dishes, cocktails — speakeasies hidden in basements
+- SPORTS: Athletes who trained here, legendary games nearby, boxing matches, rivalries
+- HIDDEN: Secret tunnels, underground rivers, buried buildings, hidden rooms, forgotten infrastructure, structures with dark pasts
+- HISTORY: Wild historical stories — only the genuinely shocking ones, not textbook facts${personalitySuffix}${avoidClause}
+${expandRadius ? `- Since the radius is ${radius} miles, facts may come from the wider metro area — include the specific neighborhood, district, or city in the "location" field` : ""}
 
-JSON only, no markdown, no explanation.`;
+RULES:
+- 2-3 punchy sentences max — bar-conversation length
+- NEVER start with "Did you know"
+- Prioritize: shocking > surprising > interesting > educational
+- Name-drop specific people, addresses, dates
+- If a celebrity has a real connection to this area, lead with that
+- For crime facts, be vivid but not gratuitous
+- For haunted facts, be genuinely creepy
+- Do NOT give all history facts — mix the categories
+- The vibe: your coolest friend who grew up in this neighborhood
+
+Return ONLY a valid JSON array, no markdown:
+[{"factoid":"...","year":"...","category":"one of: celebrity, crime, haunted, music, food, sports, hidden, history, culture"${expandRadius ? `,"location":"specific neighborhood or city"` : ""}}]`;
     }
 
     const message = await anthropic.messages.create({

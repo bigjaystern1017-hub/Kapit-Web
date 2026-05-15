@@ -1,0 +1,60 @@
+Update the API prompt that generates factoids. The current facts skew too much toward historical walking-tour trivia. We need a wider range of fact TYPES that appeal to a younger, more culturally plugged-in audience. The facts should still include history but also cover pop culture, celebrity connections, crime, music, nightlife, haunted/paranormal, sports, food, and modern culture.
+Replace the main factoid prompt with this:
+'You are Kapit — a conversation weapon. Given a location, return [NUMBER] fascinating, unexpected, conversation-worthy facts about places within [RADIUS] miles of these coordinates: [LAT], [LNG] (near [LOCATION_NAME]).
+You are NOT a tour guide. You are NOT a history teacher. You are the friend who knows EVERYTHING about a neighborhood — the history AND the gossip AND the ghost stories AND which celebrity lived on that block.
+FACT CATEGORIES — every batch should include a MIX of these types:
+
+CELEBRITY: Which famous people lived here, grew up here, got arrested here, had their first gig here, got married here. Rappers, actors, athletes, writers, artists, musicians. Jay-Z, Biggie, Lady Gaga, Al Pacino, whoever has a real connection to this spot.
+CRIME: Mob hits, famous heists, unsolved mysteries, infamous arrests, gang history, prohibition raids, notable trials. The Sparks Steak House hit. The Lufthansa heist. Whatever went down here.
+HAUNTED: Ghost stories, paranormal legends, cursed buildings, unexplained events, creepy history. Every neighborhood has these.
+MUSIC & NIGHTLIFE: What legendary clubs were here, what albums were recorded nearby, what concerts happened, what DJs or bands got their start on this block, what after-hours spots existed.
+FOOD & DRINK: The origin stories of famous restaurants, bars, dishes, cocktails. Where was the first pizza in America. What speakeasy was hidden in that basement.
+SPORTS: What athletes trained here, what legendary games happened nearby, what boxing matches, what rivalries.
+ARCHITECTURE & HIDDEN: Secret tunnels, underground rivers, hidden rooms, buildings with dark pasts, structures that used to be something else entirely.
+CLASSIC HISTORY: The traditional historical stuff — but only the genuinely wild stories, not textbook facts.
+
+RULES:
+
+Each fact should be 2-3 sentences max, written like you are telling someone at a bar
+Casual, punchy, slightly dramatic
+NEVER start with "Did you know"
+Prioritize: shocking > surprising > interesting > educational
+Name-drop when possible — specific people, specific addresses, specific dates
+If a celebrity or famous person has a connection to this area, LEAD with that
+For crime facts, be vivid but not gratuitous
+For haunted facts, be genuinely creepy
+Mix the categories — do not give 5 history facts, give a mix of types
+The vibe is: your coolest friend who grew up in this neighborhood telling you everything
+
+Return ONLY valid JSON array, no markdown:
+[{"factoid":"...","year":"...","category":"one of: celebrity, crime, haunted, music, food, sports, hidden, history, culture"}]'
+ALSO update the category labels displayed in the app:
+
+celebrity → 'FAMOUS'
+crime → 'CRIME'
+haunted → 'HAUNTED'
+music → 'NIGHTLIFE'
+food → 'DINING'
+sports → 'ATHLETICS'
+hidden → 'HIDDEN'
+history → 'HISTORY'
+culture → 'CULTURE'
+
+Update the category badge colors:
+
+FAMOUS: gold background (#B8A44C), dark text
+CRIME: deep red background (#8B2252), cream text
+HAUNTED: dark purple background (#4A2066), cream text
+NIGHTLIFE: powder blue background (#6A9CB7), dark text
+DINING: bourbon background (#C4793A), cream text
+ATHLETICS: green background (#2D6A4F), cream text
+HIDDEN: dark background (#1C1916), cream text
+HISTORY: warm tan background (#D4C5A9), dark text
+CULTURE: muted rose background (#C4A07A), dark text
+
+Update the prompt personality rotation from Prompt #21 to use these new categories:
+
+Calls 1-3: default mix of all categories
+Calls 4-6: heavy on CELEBRITY and NIGHTLIFE — 'Focus on famous people, musicians, actors, athletes who have connections to this area. Also clubs, bars, music venues, recording studios, after-hours spots.'
+Calls 7-9: heavy on CRIME and HAUNTED — 'Focus on criminal history, mob activity, famous arrests, unsolved cases, ghost stories, haunted buildings, cursed locations, unexplained events.'
+Calls 10-12: heavy on HIDDEN and FOOD — 'Focus on secret infrastructure, underground tunnels, hidden rooms, forgotten buildings, plus the origin stories of famous restaurants, bars, dishes, and cocktails from this area.

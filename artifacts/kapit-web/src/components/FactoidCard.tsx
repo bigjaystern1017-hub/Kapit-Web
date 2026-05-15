@@ -12,27 +12,51 @@ const TEASERS = [
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
+  celebrity: "FAMOUS",
   crime: "CRIME",
-  science: "SCIENCE",
-  culture: "CULTURE",
-  politics: "POLITICS",
-  sports: "ATHLETICS",
-  weird: "PECULIAR",
+  haunted: "HAUNTED",
+  music: "NIGHTLIFE",
   food: "DINING",
-  architecture: "EDIFICE",
+  sports: "ATHLETICS",
+  hidden: "HIDDEN",
+  history: "HISTORY",
+  culture: "CULTURE",
+  // legacy mappings
+  science: "SCIENCE",
+  politics: "POLITICS",
+  weird: "PECULIAR",
+  architecture: "HIDDEN",
   nature: "NATURE",
 };
 
+const CATEGORY_STYLE: Record<string, { bg: string; color: string }> = {
+  celebrity: { bg: "#B8A44C", color: "#1C1916" },
+  crime:     { bg: "#8B2252", color: "#F5EDE0" },
+  haunted:   { bg: "#4A2066", color: "#F5EDE0" },
+  music:     { bg: "#6A9CB7", color: "#1C1916" },
+  food:      { bg: "#C4793A", color: "#F5EDE0" },
+  sports:    { bg: "#2D6A4F", color: "#F5EDE0" },
+  hidden:    { bg: "#1C1916", color: "#F5EDE0" },
+  history:   { bg: "#D4C5A9", color: "#1C1916" },
+  culture:   { bg: "#C4A07A", color: "#1C1916" },
+  architecture: { bg: "#1C1916", color: "#F5EDE0" },
+};
+
 const CONVERSATION_OPENERS: Record<string, string> = {
-  crime: "\u201cThe most interesting criminals in history never got caught \u2014 they got celebrated.\u201d",
-  science: "\u201cThere\u2019s a fact about this neighborhood that would make your physics professor cry into their coffee.\u201d",
-  culture: "\u201cThe cultural history of this block is, frankly, more interesting than anything you\u2019ll read this week.\u201d",
-  politics: "\u201cPoliticians here used to be genuinely colorful. Now they\u2019re just\u2026 loud.\u201d",
-  sports: "\u201cAthletic achievement used to mean something very different right here.\u201d",
-  weird: "\u201cIf I told you what happened here, you wouldn\u2019t believe me. But I have a source.\u201d",
-  food: "\u201cThe culinary history of this exact spot is the reason I will never apologize for ordering the expensive thing.\u201d",
+  celebrity: "\u201cIf I told you who used to drink at the bar on this block, you\u2019d never shut up about it at parties.\u201d",
+  crime:     "\u201cThe most interesting criminals in history never got caught \u2014 they got celebrated.\u201d",
+  haunted:   "\u201cI\u2019m not saying I believe in ghosts. I\u2019m saying something happened here that nobody has explained.\u201d",
+  music:     "\u201cThe music that came out of this neighborhood changed everything. Most people just don\u2019t know it yet.\u201d",
+  food:      "\u201cThe culinary history of this exact spot is the reason I will never apologize for ordering the expensive thing.\u201d",
+  sports:    "\u201cAthletic achievement used to mean something very different right here.\u201d",
+  hidden:    "\u201cThere is something underneath this block that the city would very much prefer you didn\u2019t know about.\u201d",
+  history:   "\u201cThe official version of what happened here is significantly less interesting than what actually happened.\u201d",
+  culture:   "\u201cThe cultural history of this block is, frankly, more interesting than anything you\u2019ll read this week.\u201d",
+  science:   "\u201cThere\u2019s a fact about this neighborhood that would make your physics professor cry into their coffee.\u201d",
+  politics:  "\u201cPoliticians here used to be genuinely colorful. Now they\u2019re just\u2026 loud.\u201d",
+  weird:     "\u201cIf I told you what happened here, you wouldn\u2019t believe me. But I have a source.\u201d",
   architecture: "\u201cThe building you\u2019re standing near has a past that the architects would very much prefer you didn\u2019t know.\u201d",
-  nature: "\u201cNature has been absolutely unhinged in this neighborhood. Let me explain.\u201d",
+  nature:    "\u201cNature has been absolutely unhinged in this neighborhood. Let me explain.\u201d",
 };
 
 export function getCategoryLabel(cat: string): string {
@@ -201,7 +225,14 @@ export default function FactoidCard({ factoid, isSpinning, onRevealComplete, onA
                 from the archives
               </span>
             )}
-            <span className="pill pill-bourbon font-mono">{getCategoryLabel(factoid.category)}</span>
+            <span
+              className="pill font-mono"
+              style={{
+                backgroundColor: CATEGORY_STYLE[factoid.category]?.bg ?? "#C4793A",
+                color: CATEGORY_STYLE[factoid.category]?.color ?? "#F5EDE0",
+                border: "none",
+              }}
+            >{getCategoryLabel(factoid.category)}</span>
             <span className="pill pill-dark font-mono">{shortYear(factoid.year)}</span>
             {factoid.isGlobalWildcard ? (
               <span className="pill font-mono" style={{ backgroundColor: "var(--brass)", color: "var(--warm-black)", border: "1px solid var(--warm-black)" }}>
