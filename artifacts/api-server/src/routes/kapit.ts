@@ -32,6 +32,7 @@ router.post("/kapit/factoids", async (req, res) => {
       expandRadius = false,
       wildcardMode = false,
       promptPersonality = 0,
+      promptCounter = 0,
       isRetry = false,
     } = req.body as {
       lat: number;
@@ -42,9 +43,10 @@ router.post("/kapit/factoids", async (req, res) => {
       expandRadius?: boolean;
       wildcardMode?: boolean;
       promptPersonality?: number;
+      promptCounter?: number;
       isRetry?: boolean;
     };
-    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count, expandRadius, wildcardMode, seenTopics: seenTopics.length });
+    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count, expandRadius, wildcardMode, seenTopics: seenTopics.length, promptCounter });
 
     if (lat === undefined || lng === undefined || !locationName) {
       console.log("[kapit-api] /kapit/factoids 400 missing fields");
@@ -68,11 +70,20 @@ router.post("/kapit/factoids", async (req, res) => {
     console.log("[kapit-api] /kapit/factoids calling Anthropic", { cacheKey, count, mode });
 
     const requestedCount = Math.max(1, Math.min(count, 8));
-    const radius = expandRadius ? 50 : 10;
+    const radius = expandRadius ? 50 : 25;
+    const issueNum = Math.max(1, (promptCounter % 12) + 1);
 
-    const avoidClause = seenTopics.length > 0
-      ? `\n- CRITICAL: The user has already heard these facts. Do NOT repeat or even overlap with these topics:\n  ${seenTopics.slice(0, 15).map((t, i) => `${i + 1}. "${t.slice(0, 80)}"`).join("\n  ")}\n- Dig deeper: obscure history, forgotten scandals, unusual laws, local food history, lesser-known people, strange architecture details. Think beyond the obvious.`
+    // Anti-repeat block always appended at the end of the prompt
+    const topicsSection = seenTopics.length > 0
+      ? `\nTOPICS TO AVOID — user has already heard these:\n${seenTopics.slice(0, 20).map((t, i) => `  ${i + 1}. ${t.slice(0, 80)}`).join("\n")}\n`
       : "";
+
+    const antiRepeatBlock = `
+CRITICAL ANTI-REPEAT RULES:${topicsSection}
+- Do NOT default to the most famous or obvious facts. Assume the user has already heard those.
+- Think of this as issue #${issueNum} of a neighborhood magazine. Issue 1 = obvious landmarks and famous names. Issue 5 = things only locals know. Issue 10 = facts that would surprise even a local historian. You are writing issue #${issueNum} — go that deep.
+- Each fact must cover a genuinely DIFFERENT subject: different person, different building, different decade, different type of event.
+- If you cannot find ${requestedCount} truly unique facts for this exact location, expand your search to 25 miles rather than repeating anything.`;
 
     let promptContent: string;
 
@@ -89,7 +100,7 @@ FACT CATEGORIES — mix these types:
 - FOOD & DRINK: Origin stories of famous restaurants, bars, dishes, cocktails
 - SPORTS: Athletes, legendary matches, rivalries
 - HIDDEN: Secret tunnels, buried buildings, hidden infrastructure
-- HISTORY: Wild historical stories — not textbook facts${personalitySuffix}${avoidClause}
+- HISTORY: Wild historical stories — not textbook facts${personalitySuffix}
 
 RULES:
 - 2-3 punchy sentences max — bar-conversation length
@@ -97,6 +108,7 @@ RULES:
 - Prioritize: shocking > surprising > interesting > educational
 - Name-drop specific people, addresses, dates
 - Casual, punchy, slightly dramatic tone
+${antiRepeatBlock}
 
 Return ONLY a valid JSON array, no markdown:
 [{"factoid":"...","year":"...","category":"one of: celebrity, crime, haunted, music, food, sports, hidden, history, culture","location":"city and country"}]`;
@@ -113,7 +125,7 @@ FACT CATEGORIES — every batch must include a MIX of these types:
 - FOOD & DRINK: Origin stories of famous restaurants, bars, dishes, cocktails — speakeasies hidden in basements
 - SPORTS: Athletes who trained here, legendary games nearby, boxing matches, rivalries
 - HIDDEN: Secret tunnels, underground rivers, buried buildings, hidden rooms, forgotten infrastructure, structures with dark pasts
-- HISTORY: Wild historical stories — only the genuinely shocking ones, not textbook facts${personalitySuffix}${avoidClause}
+- HISTORY: Wild historical stories — only the genuinely shocking ones, not textbook facts${personalitySuffix}
 ${expandRadius ? `- Since the radius is ${radius} miles, facts may come from the wider metro area — include the specific neighborhood, district, or city in the "location" field` : ""}
 
 RULES:
@@ -126,6 +138,7 @@ RULES:
 - For haunted facts, be genuinely creepy
 - Do NOT give all history facts — mix the categories
 - The vibe: your coolest friend who grew up in this neighborhood
+${antiRepeatBlock}
 
 Return ONLY a valid JSON array, no markdown:
 [{"factoid":"...","year":"...","category":"one of: celebrity, crime, haunted, music, food, sports, hidden, history, culture"${expandRadius ? `,"location":"specific neighborhood or city"` : ""}}]`;

@@ -37286,9 +37286,10 @@ router2.post("/kapit/factoids", async (req, res) => {
       expandRadius = false,
       wildcardMode = false,
       promptPersonality = 0,
+      promptCounter = 0,
       isRetry = false
     } = req.body;
-    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count, expandRadius, wildcardMode, seenTopics: seenTopics.length });
+    console.log("[kapit-api] /kapit/factoids hit", { lat, lng, locationName, count, expandRadius, wildcardMode, seenTopics: seenTopics.length, promptCounter });
     if (lat === void 0 || lng === void 0 || !locationName) {
       console.log("[kapit-api] /kapit/factoids 400 missing fields");
       res.status(400).json({ error: "lat, lng, and locationName are required" });
@@ -37308,11 +37309,18 @@ router2.post("/kapit/factoids", async (req, res) => {
     }
     console.log("[kapit-api] /kapit/factoids calling Anthropic", { cacheKey, count, mode });
     const requestedCount = Math.max(1, Math.min(count, 8));
-    const radius = expandRadius ? 50 : 10;
-    const avoidClause = seenTopics.length > 0 ? `
-- CRITICAL: The user has already heard these facts. Do NOT repeat or even overlap with these topics:
-  ${seenTopics.slice(0, 15).map((t, i) => `${i + 1}. "${t.slice(0, 80)}"`).join("\n  ")}
-- Dig deeper: obscure history, forgotten scandals, unusual laws, local food history, lesser-known people, strange architecture details. Think beyond the obvious.` : "";
+    const radius = expandRadius ? 50 : 25;
+    const issueNum = Math.max(1, promptCounter % 12 + 1);
+    const topicsSection = seenTopics.length > 0 ? `
+TOPICS TO AVOID \u2014 user has already heard these:
+${seenTopics.slice(0, 20).map((t, i) => `  ${i + 1}. ${t.slice(0, 80)}`).join("\n")}
+` : "";
+    const antiRepeatBlock = `
+CRITICAL ANTI-REPEAT RULES:${topicsSection}
+- Do NOT default to the most famous or obvious facts. Assume the user has already heard those.
+- Think of this as issue #${issueNum} of a neighborhood magazine. Issue 1 = obvious landmarks and famous names. Issue 5 = things only locals know. Issue 10 = facts that would surprise even a local historian. You are writing issue #${issueNum} \u2014 go that deep.
+- Each fact must cover a genuinely DIFFERENT subject: different person, different building, different decade, different type of event.
+- If you cannot find ${requestedCount} truly unique facts for this exact location, expand your search to 25 miles rather than repeating anything.`;
     let promptContent;
     if (wildcardMode) {
       promptContent = `You are Kapit \u2014 a conversation weapon. Return ${requestedCount} fascinating, unexpected, conversation-worthy fact${requestedCount > 1 ? "s" : ""} from ANYWHERE in the world \u2014 different continents, different centuries, completely different topics.
@@ -37327,7 +37335,7 @@ FACT CATEGORIES \u2014 mix these types:
 - FOOD & DRINK: Origin stories of famous restaurants, bars, dishes, cocktails
 - SPORTS: Athletes, legendary matches, rivalries
 - HIDDEN: Secret tunnels, buried buildings, hidden infrastructure
-- HISTORY: Wild historical stories \u2014 not textbook facts${personalitySuffix}${avoidClause}
+- HISTORY: Wild historical stories \u2014 not textbook facts${personalitySuffix}
 
 RULES:
 - 2-3 punchy sentences max \u2014 bar-conversation length
@@ -37335,6 +37343,7 @@ RULES:
 - Prioritize: shocking > surprising > interesting > educational
 - Name-drop specific people, addresses, dates
 - Casual, punchy, slightly dramatic tone
+${antiRepeatBlock}
 
 Return ONLY a valid JSON array, no markdown:
 [{"factoid":"...","year":"...","category":"one of: celebrity, crime, haunted, music, food, sports, hidden, history, culture","location":"city and country"}]`;
@@ -37351,7 +37360,7 @@ FACT CATEGORIES \u2014 every batch must include a MIX of these types:
 - FOOD & DRINK: Origin stories of famous restaurants, bars, dishes, cocktails \u2014 speakeasies hidden in basements
 - SPORTS: Athletes who trained here, legendary games nearby, boxing matches, rivalries
 - HIDDEN: Secret tunnels, underground rivers, buried buildings, hidden rooms, forgotten infrastructure, structures with dark pasts
-- HISTORY: Wild historical stories \u2014 only the genuinely shocking ones, not textbook facts${personalitySuffix}${avoidClause}
+- HISTORY: Wild historical stories \u2014 only the genuinely shocking ones, not textbook facts${personalitySuffix}
 ${expandRadius ? `- Since the radius is ${radius} miles, facts may come from the wider metro area \u2014 include the specific neighborhood, district, or city in the "location" field` : ""}
 
 RULES:
@@ -37364,6 +37373,7 @@ RULES:
 - For haunted facts, be genuinely creepy
 - Do NOT give all history facts \u2014 mix the categories
 - The vibe: your coolest friend who grew up in this neighborhood
+${antiRepeatBlock}
 
 Return ONLY a valid JSON array, no markdown:
 [{"factoid":"...","year":"...","category":"one of: celebrity, crime, haunted, music, food, sports, hidden, history, culture"${expandRadius ? `,"location":"specific neighborhood or city"` : ""}}]`;

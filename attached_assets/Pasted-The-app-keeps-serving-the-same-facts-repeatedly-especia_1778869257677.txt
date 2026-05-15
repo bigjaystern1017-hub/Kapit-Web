@@ -1,0 +1,20 @@
+The app keeps serving the same facts repeatedly, especially the most obvious/famous ones for an area. Two changes needed:
+CHANGE 1 — STRONGER ANTI-REPEAT IN THE PROMPT:
+Update the API prompt for factoid generation. At the END of the prompt, after all other instructions, add this block:
+'CRITICAL ANTI-REPEAT RULES:
+
+You MUST NOT mention any of the following topics that the user has already heard: [INSERT SEEN TOPICS LIST]
+Do NOT default to the most famous facts about this area. The user has probably already heard about the most obvious landmarks, celebrities, and events. Dig DEEPER.
+Imagine you are writing issue #[INSERT PROMPT COUNTER NUMBER] of a magazine about this neighborhood. Issue 1 covers the obvious stuff. Issue 5 covers the stuff only locals know. Issue 10 covers things that would surprise even a historian. You are writing issue [NUMBER]. Act accordingly.
+Each fact must be about a genuinely DIFFERENT subject — different person, different building, different decade, different type of event.
+If you cannot think of [NUMBER] truly unique facts for this exact area, widen your radius to 20 miles rather than repeating anything.'
+
+The [INSERT SEEN TOPICS LIST] should pull from the localStorage kapit_seen_facts and extract a 3-5 word summary of each seen fact. For example if a seen fact starts with 'Jay-Z's first office for Roc-A-Fella' the topic would be 'Jay-Z Roc-A-Fella office'. Send the last 20 seen topics.
+The [INSERT PROMPT COUNTER NUMBER] should be the kapit_prompt_counter value from localStorage. This makes the AI dig progressively deeper with each batch of facts.
+CHANGE 2 — EXPAND THE SEEN TOPICS EXTRACTION:
+Currently we store the first 40 characters of each fact as a fingerprint. Also extract and store 2-3 keywords from each fact for the anti-repeat topic list. When a new fact is stored in kapit_seen_facts, also store a keywords field. Use simple extraction: take any proper nouns (capitalized words that aren't at the start of a sentence), years, and location names from the factoid text. Store these as a comma-separated string alongside the fingerprint.
+When building the seen topics list for the API prompt, use these keywords rather than the raw fingerprint text. This gives Claude clearer signals about what to avoid.
+CHANGE 3 — NEVER REPEAT WITHIN A SESSION:
+Add a session-level duplicate check that is separate from localStorage. Keep a Set in React state (not localStorage) that stores every fact ID or fingerprint shown in the current browser session. Before displaying ANY fact to the user — whether from API, from cache, from preloaded facts, or from demo mode — check this Set. If the fact is already in the Set, skip it and pull the next one. This prevents within-session repeats even if the API returns a duplicate that slipped past the prompt-level filter.
+CHANGE 4 — WIDER DEFAULT RADIUS:
+Change the default search radius in the API prompt from 10 miles to 25 miles. This gives Claude a much larger area to draw from. For dense areas like NYC this means Brooklyn users might get facts from Manhattan, Queens, or even Jersey City — which is fine and actually more interesting. Label each fact with its actual location so the user knows where the fact is about

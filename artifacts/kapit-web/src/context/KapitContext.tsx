@@ -78,23 +78,72 @@ const SEEN_FACTS_KEY = "kapit_seen_facts";
 const PROMPT_COUNTER_KEY = "kapit_prompt_counter";
 const MAX_SEEN_FACTS = 200;
 
+interface SeenEntry {
+  fp: string; // first 40-char fingerprint for fast dedup
+  kw: string; // extracted keywords for Claude anti-repeat signal
+}
+
 function seenFingerprint(text: string): string {
   return text.trim().slice(0, 40).toLowerCase();
 }
 
-function loadSeenFacts(): string[] {
-  try { return JSON.parse(localStorage.getItem(SEEN_FACTS_KEY) || "[]") as string[]; }
-  catch { return []; }
+/** Extract proper nouns, years, and notable words for Claude's avoid list */
+function extractKeywords(text: string): string {
+  const kws: string[] = [];
+
+  // Years: 1000–2029
+  const years = text.match(/\b(1[0-9]{3}|20[0-2][0-9])\b/g) ?? [];
+  kws.push(...years.slice(0, 2));
+
+  // Capitalized words that are NOT at the start of a sentence
+  const words = text.split(/\s+/);
+  for (let i = 1; i < words.length; i++) {
+    const prev = words[i - 1];
+    if (/[.!?]$/.test(prev)) continue; // skip sentence-start words
+    const w = words[i].replace(/[^a-zA-Z'-]/g, "");
+    if (w.length > 2 && /^[A-Z]/.test(w)) kws.push(w);
+  }
+
+  return [...new Set(kws)].slice(0, 6).join(" ");
+}
+
+function loadSeenEntries(): SeenEntry[] {
+  try {
+    const raw = localStorage.getItem(SEEN_FACTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    // Migrate old string[] format to new object format
+    if (parsed.length > 0 && typeof parsed[0] === "string") {
+      return (parsed as string[]).map((fp) => ({ fp, kw: "" }));
+    }
+    return parsed as SeenEntry[];
+  } catch { return []; }
+}
+
+function loadSeenFps(): Set<string> {
+  return new Set(loadSeenEntries().map((e) => e.fp));
 }
 
 function persistSeenFact(text: string): void {
   try {
-    const seen = loadSeenFacts();
+    const entries = loadSeenEntries();
     const fp = seenFingerprint(text);
-    if (seen.includes(fp)) return;
-    const updated = [...seen, fp].slice(-MAX_SEEN_FACTS);
+    if (entries.some((e) => e.fp === fp)) return;
+    const kw = extractKeywords(text);
+    const updated = [...entries, { fp, kw }].slice(-MAX_SEEN_FACTS);
     localStorage.setItem(SEEN_FACTS_KEY, JSON.stringify(updated));
   } catch {}
+}
+
+/** Build the seen-topics list for the API prompt — uses keywords when available */
+function buildSeenTopics(entries: SeenEntry[], sessionFps: string[]): string[] {
+  // Keywords from localStorage (last 20), falling back to fingerprint if no keywords
+  const lsTopics = entries.slice(-20).map((e) => e.kw || e.fp).filter(Boolean);
+  // Recent session fingerprints as additional signal
+  const sessionTopics = sessionFps.slice(-6);
+  // Merge, dedupe by value, cap at 20
+  return [...new Set([...sessionTopics, ...lsTopics])].slice(-20);
 }
 
 // Returns current counter value (0–11), then advances it
@@ -151,6 +200,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchGenerationRef = useRef(0);
   const fetchCallCountRef = useRef(0);
+  // Session-level fingerprints: tracks every fact text shown this session
   const servedFactTextsRef = useRef<string[]>([]);
   const locationSnapCountRef = useRef(0);
   const hasRetriedRef = useRef(false);
@@ -212,7 +262,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
   const markAsServed = useCallback((f: Factoid) => {
     const fp = fingerprint(f.factoid);
     if (!servedFactTextsRef.current.includes(fp)) {
-      servedFactTextsRef.current = [...servedFactTextsRef.current.slice(-19), fp];
+      servedFactTextsRef.current = [...servedFactTextsRef.current.slice(-49), fp];
     }
     persistSeenFact(f.factoid);
   }, []);
@@ -228,16 +278,15 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     const wildcardMode = callNum > 4 && callNum % 5 === 0;
     const isRetry = hasRetriedRef.current;
 
-    // Build seenTopics: last 10 from localStorage + current session fingerprints
-    const lsSeenFacts = loadSeenFacts();
-    const lsSeenSet = new Set(lsSeenFacts);
+    // Seen dedup sets
+    const lsSeenEntries = loadSeenEntries();
+    const lsSeenFps = loadSeenFps();
     const sessionFpSet = new Set(servedFactTextsRef.current);
-    const seenTopics = [
-      ...servedFactTextsRef.current.slice(-6),
-      ...lsSeenFacts.slice(-10),
-    ].slice(-15);
 
-    // Prompt personality rotates every 3 calls (0-11 counter → 0-3 personality)
+    // Build keyword-based topic list for Claude's anti-repeat block
+    const seenTopics = buildSeenTopics(lsSeenEntries, servedFactTextsRef.current);
+
+    // Prompt personality and raw counter (1-12 "issue number")
     const rawCounter = getAndAdvancePromptCounter();
     const promptPersonality = Math.floor(rawCounter / 3);
 
@@ -269,8 +318,13 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const url = `${apiBase()}/api/kapit/factoids`;
-      const body = { lat: loc.lat, lng: loc.lng, locationName: loc.name, count: 3, seenTopics, expandRadius, wildcardMode, promptPersonality, isRetry };
-      console.log("[kapit] fetchFactoids POST", url, { callNum, expandRadius, wildcardMode, promptPersonality, isRetry, seenTopics: seenTopics.length });
+      const body = {
+        lat: loc.lat, lng: loc.lng, locationName: loc.name, count: 3,
+        seenTopics, expandRadius, wildcardMode,
+        promptPersonality, promptCounter: rawCounter,
+        isRetry,
+      };
+      console.log("[kapit] fetchFactoids POST", url, { callNum, expandRadius, wildcardMode, promptPersonality, promptCounter: rawCounter, isRetry, seenTopics: seenTopics.length });
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -293,10 +347,12 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
       const raw = data.factoids as { factoid: string; year: string; category: string; location?: string }[];
 
-      // Deduplicate against both session fingerprints and localStorage history
-      const deduped = raw.filter((f) =>
-        !sessionFpSet.has(fingerprint(f.factoid)) && !lsSeenSet.has(seenFingerprint(f.factoid))
-      );
+      // Deduplicate against session fingerprints AND localStorage history
+      const deduped = raw.filter((f) => {
+        const sfp = fingerprint(f.factoid);
+        const lsfp = seenFingerprint(f.factoid);
+        return !sessionFpSet.has(sfp) && !lsSeenFps.has(lsfp);
+      });
 
       // If every fact is a duplicate and we haven't retried yet, schedule a retry
       if (deduped.length === 0 && !isRetry) {
@@ -306,7 +362,7 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      hasRetriedRef.current = false; // reset after successful fresh batch
+      hasRetriedRef.current = false;
       const toUse = deduped.length > 0 ? deduped : raw;
 
       const mapped: Factoid[] = toUse.map((f) => ({
@@ -438,7 +494,6 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     }
 
     const isFourth = next % 4 === 0;
-    // After 5+ snaps at the same location, mix in a 50/50 wildcard when running low on fresh facts
     const isRunningLow = factoidsRef.current.length <= 1;
     const shouldMixWildcard = !isFourth && locationSnapCountRef.current > 5 && isRunningLow && Math.random() < 0.5;
 
@@ -468,9 +523,26 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     await fetchWildcard();
   }, [fetchWildcard, drawDemoWild]);
 
+  /**
+   * Returns the next factoid to show, skipping any already served this session.
+   * This is the session-level dedup check — prevents within-session repeats
+   * even if the API or cache returns something already shown.
+   */
   const getCurrentFactoid = useCallback(() => {
     if (isWildcard) return wildcardFactoid;
     if (factoids.length === 0) return null;
+
+    // Walk forward from currentFactoidIndex, skipping session-served facts
+    const sessionFps = new Set(servedFactTextsRef.current);
+    for (let i = 0; i < factoids.length; i++) {
+      const candidate = factoids[(currentFactoidIndex + i) % factoids.length];
+      if (candidate && !sessionFps.has(fingerprint(candidate.factoid))) {
+        return candidate;
+      }
+    }
+
+    // All facts in the queue have been shown this session — return the last one
+    // (fetchFactoids will be called on the next snap to refresh)
     return factoids[currentFactoidIndex % factoids.length] ?? null;
   }, [factoids, currentFactoidIndex, isWildcard, wildcardFactoid]);
 
