@@ -313,9 +313,9 @@ function HomeScreen() {
                 <sup style={{ fontSize: 14, fontWeight: 700, marginLeft: 2, top: "-1.4em", color: "var(--bourbon)" }}>™</sup>
               </h1>
 
-              <p className="font-serif" style={{ fontSize: 14, color: "var(--smoke)", fontStyle: "italic", marginTop: 8, marginBottom: 14 }}>
-                Pocket trivia for more magnetic conversations.
-              </p>
+              <div className="font-mono" style={{ fontSize: 11, letterSpacing: 2, color: "var(--smoke)", textTransform: "lowercase", marginTop: 8, marginBottom: 14 }}>
+                drop a fact · no cap
+              </div>
 
               <div style={{
                 display: "inline-block", backgroundColor: "var(--warm-black)", color: "var(--cream)",
