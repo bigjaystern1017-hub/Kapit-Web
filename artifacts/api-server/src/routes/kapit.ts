@@ -78,6 +78,21 @@ router.post("/kapit/factoids", async (req, res) => {
       ? `\nTOPICS TO AVOID — user has already heard these:\n${seenTopics.slice(0, 20).map((t, i) => `  ${i + 1}. ${t.slice(0, 80)}`).join("\n")}\n`
       : "";
 
+    const contentBoundaries = `
+CONTENT BOUNDARIES — STRICTLY FOLLOW THESE:
+Do NOT generate facts about:
+- Slavery, slave trade, slave burial grounds, slave labor, slave markets
+- Genocide, ethnic cleansing, mass atrocities
+- Sexual assault, rape
+- Child abuse or child death
+- Lynching, racial terror
+- Active mass shootings (historical mob hits and crime are fine, school shootings are not)
+- The Holocaust (unless the fact is specifically about heroism or resistance)
+
+These topics are historically important but this app is designed to be a fun conversation starter at bars and on dates. Crime, scandal, haunted stories, and dark history are fine — just not atrocities. The line is: would this fact make someone go "oh that's wild" (good) or "oh... that's really sad" (bad). Stay on the wild side.
+
+TONE CHECK: Before including any fact, ask yourself: if someone read this out loud at a rooftop bar and their friend said "wait, really?!" — would the energy in the group go UP or DOWN? Only include facts where the energy goes UP.`;
+
     const antiRepeatBlock = `
 CRITICAL ANTI-REPEAT RULES:${topicsSection}
 - Do NOT default to the most famous or obvious facts. Assume the user has already heard those.
@@ -108,6 +123,7 @@ RULES:
 - Prioritize: shocking > surprising > interesting > educational
 - Name-drop specific people, addresses, dates
 - Casual, punchy, slightly dramatic tone
+${contentBoundaries}
 ${antiRepeatBlock}
 
 Return ONLY a valid JSON array, no markdown:
@@ -138,6 +154,7 @@ RULES:
 - For haunted facts, be genuinely creepy
 - Do NOT give all history facts — mix the categories
 - The vibe: your coolest friend who grew up in this neighborhood
+${contentBoundaries}
 ${antiRepeatBlock}
 
 Return ONLY a valid JSON array, no markdown:

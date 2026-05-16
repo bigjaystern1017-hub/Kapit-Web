@@ -1,0 +1,33 @@
+"Add content sensitivity filtering to the factoid system. This is critical for the app's tone and brand.
+CHANGE 1 — UPDATE THE API PROMPT:
+Add this to the factoid generation prompt, near the top of the rules section:
+'CONTENT BOUNDARIES — STRICTLY FOLLOW THESE:
+Do NOT generate facts about:
+
+Slavery, slave trade, slave burial grounds, slave labor, slave markets
+Genocide, ethnic cleansing, mass atrocities
+Sexual assault, rape
+Child abuse or child death
+Lynching, racial terror
+Active mass shootings (historical mob hits and crime are fine, school shootings are not)
+The Holocaust (unless the fact is specifically about heroism or resistance)
+
+These topics are historically important but this app is designed to be a fun conversation starter at bars and on dates. A fact about slavery followed by a whip crack sound effect is not the vibe. Keep it light enough that someone could read it out loud at a dinner party without the table going silent.
+Crime, scandal, haunted stories, and dark history are fine — just not atrocities. The line is: would this fact make someone go "oh that's wild" (good) or "oh... that's really sad" (bad). Stay on the wild side.'
+CHANGE 2 — CLIENT-SIDE CONTENT FILTER:
+Add a content filter that runs on every fact BEFORE it is shown to the user. Check the factoid text against a blocklist of terms. If any term appears, skip that fact and show the next one instead.
+Blocklist terms (case-insensitive partial match):
+
+slave, slavery, enslaved
+lynching, lynched
+genocide
+ethnic cleansing
+sexual assault, rape, raped
+child abuse, child murder
+concentration camp
+mass shooting, school shooting
+holocaust (unless also containing: rescue, saved, resistance, survived, hero)
+
+If a fact is filtered out, log it to console as 'FILTERED: [first 40 chars]' for debugging, and move to the next fact in the array. If ALL facts in a batch are filtered, trigger a new API call.
+CHANGE 3 — TONE CHECK IN PROMPT:
+Also add this line to the prompt: 'Before including any fact, ask yourself: if someone read this out loud at a rooftop bar and then their friend said "wait really?!" — would the energy in the group go UP or DOWN? Only include facts where the energy goes UP

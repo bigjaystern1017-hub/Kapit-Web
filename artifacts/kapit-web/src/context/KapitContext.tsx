@@ -87,6 +87,40 @@ function seenFingerprint(text: string): string {
   return text.trim().slice(0, 40).toLowerCase();
 }
 
+// ── Client-side content filter ───────────────────────────────────────────────
+const BLOCKLIST: Array<string | RegExp> = [
+  "slave", "slavery", "enslaved",
+  "lynching", "lynched",
+  "genocide",
+  "ethnic cleansing",
+  "sexual assault",
+  /\brape\b/, /\braped\b/,
+  "child abuse", "child murder",
+  "concentration camp",
+  "mass shooting", "school shooting",
+];
+
+// Holocaust is only blocked when NOT paired with heroism/resistance context
+const HOLOCAUST_SAFE = ["rescue", "saved", "resistance", "survived", "hero"];
+
+function isContentSafe(text: string): boolean {
+  const lower = text.toLowerCase();
+
+  // Holocaust: allow only when paired with positive framing
+  if (lower.includes("holocaust")) {
+    return HOLOCAUST_SAFE.some((term) => lower.includes(term));
+  }
+
+  for (const term of BLOCKLIST) {
+    if (typeof term === "string") {
+      if (lower.includes(term)) return false;
+    } else {
+      if (term.test(lower)) return false;
+    }
+  }
+  return true;
+}
+
 /** Extract proper nouns, years, and notable words for Claude's avoid list */
 function extractKeywords(text: string): string {
   const kws: string[] = [];
@@ -347,8 +381,12 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
 
       const raw = data.factoids as { factoid: string; year: string; category: string; location?: string }[];
 
-      // Deduplicate against session fingerprints AND localStorage history
+      // Deduplicate against session fingerprints AND localStorage history, and run content filter
       const deduped = raw.filter((f) => {
+        if (!isContentSafe(f.factoid)) {
+          console.log("FILTERED:", f.factoid.trim().slice(0, 40));
+          return false;
+        }
         const sfp = fingerprint(f.factoid);
         const lsfp = seenFingerprint(f.factoid);
         return !sessionFpSet.has(sfp) && !lsSeenFps.has(lsfp);
@@ -532,11 +570,16 @@ export function KapitProvider({ children }: { children: React.ReactNode }) {
     if (isWildcard) return wildcardFactoid;
     if (factoids.length === 0) return null;
 
-    // Walk forward from currentFactoidIndex, skipping session-served facts
+    // Walk forward from currentFactoidIndex, skipping session-served and unsafe facts
     const sessionFps = new Set(servedFactTextsRef.current);
     for (let i = 0; i < factoids.length; i++) {
       const candidate = factoids[(currentFactoidIndex + i) % factoids.length];
-      if (candidate && !sessionFps.has(fingerprint(candidate.factoid))) {
+      if (!candidate) continue;
+      if (!isContentSafe(candidate.factoid)) {
+        console.log("FILTERED:", candidate.factoid.trim().slice(0, 40));
+        continue;
+      }
+      if (!sessionFps.has(fingerprint(candidate.factoid))) {
         return candidate;
       }
     }
